@@ -40,7 +40,7 @@ public final class Orchestrator {
             String platform = channel.getPlatform();
 
             System.out.println(AnsiColors.CYAN + "--------------------------------------" + AnsiColors.RESET);
-            System.out.printf(AnsiColors.BOLD + "[%d/%d]  Processing: %s (Platform: %s)" + AnsiColors.RESET + "%n",
+            System.out.printf(AnsiColors.BOLD + "[%d/%d]  Processing: %s (Platform: %s)%n" + AnsiColors.RESET,
                     iterator++, channels.size(), name, platform);
             System.out.println(AnsiColors.CYAN + "--------------------------------------" + AnsiColors.RESET);
 
