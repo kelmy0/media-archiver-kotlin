@@ -9,7 +9,7 @@ import com.kelmy.mediaarchiver.schemas.BaseChannelConfig;
  * Abstract Base Class that defines the contract
  * that any platform extractor must implement.
  */
-public abstract class Extractor<TConfig extends BaseChannelConfig, TOptions> {
+public abstract class Extractor<TOptions> {
     protected final String name;
 
     protected Extractor(String name) {
@@ -48,5 +48,5 @@ public abstract class Extractor<TConfig extends BaseChannelConfig, TOptions> {
     /**
      * Extracts specific options from the generic channel configuration.
      */
-    public abstract TOptions extractOptions(TConfig channelConfig);
+    public abstract TOptions extractOptions(BaseChannelConfig channelConfig);
 }

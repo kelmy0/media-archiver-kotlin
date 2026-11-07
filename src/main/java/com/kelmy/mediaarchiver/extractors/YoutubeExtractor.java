@@ -4,10 +4,19 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.kelmy.mediaarchiver.schemas.YoutubeChannelConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.kelmy.mediaarchiver.schemas.BaseChannelConfig;
 import com.kelmy.mediaarchiver.schemas.YoutubeFetchOptions;
 
-public class YoutubeExtractor extends Extractor<YoutubeChannelConfig, YoutubeFetchOptions> {
+import tools.jackson.databind.DatabindException;
+import tools.jackson.databind.ObjectMapper;
+
+public class YoutubeExtractor extends Extractor<YoutubeFetchOptions> {
+    private static final Logger log = LoggerFactory.getLogger(YoutubeExtractor.class);
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
     public YoutubeExtractor() {
         super("youtube");
     }
@@ -85,10 +94,36 @@ public class YoutubeExtractor extends Extractor<YoutubeChannelConfig, YoutubeFet
     }
 
     @Override
-    public YoutubeFetchOptions extractOptions(YoutubeChannelConfig channelConfig) {
-        boolean fetchVideos = channelConfig != null ? channelConfig.isFetchVideos() : true;
-        boolean fetchShorts = channelConfig != null ? channelConfig.isFetchShorts() : false;
+    public YoutubeFetchOptions extractOptions(BaseChannelConfig channelConfig) {
+        String jsonOptions = channelConfig != null ? channelConfig.getName() : null;
 
-        return new YoutubeFetchOptions(fetchVideos, fetchShorts);
+        if (jsonOptions == null || jsonOptions.isBlank()) {
+            log.warn("No JSON option found for channel '{}'. Using default values.",
+                    channelConfig != null ? channelConfig.getName() : "unknown");
+            return new YoutubeFetchOptions(true, false);
+        }
+
+        try {
+            YoutubeFetchOptions options = objectMapper.readValue(jsonOptions, YoutubeFetchOptions.class);
+
+            this.validateOptions(options);
+
+            return options;
+        } catch (DatabindException e) {
+            log.error("Structure/mapping error in the options JSON for the channel: {}. Details: {}",
+                    channelConfig.getName(), e.getMessage());
+            throw new IllegalArgumentException("Invalid JSON configuration for the channel " + channelConfig.getName(),
+                    e);
+        } catch (Exception e) {
+            log.error("Eunexpected error while processing JSON options for the channel: {}", channelConfig.getName(),
+                    e);
+            throw new RuntimeException("Failed to read channel options", e);
+        }
+    }
+
+    private void validateOptions(YoutubeFetchOptions options) {
+        if (!options.fetchVideos() && !options.fetchShorts()) {
+            log.warn("Attention: Both 'fetchVideos' and 'fetchShorts' are disabled for this channel.");
+        }
     }
 }

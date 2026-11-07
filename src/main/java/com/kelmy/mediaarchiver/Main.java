@@ -7,16 +7,19 @@ import java.util.List;
 import com.kelmy.mediaarchiver.config.ConfigManager;
 import com.kelmy.mediaarchiver.config.ConfigProvider;
 import com.kelmy.mediaarchiver.core.ChannelProcessor;
+import com.kelmy.mediaarchiver.core.ChannelsRepositoryProvider;
 import com.kelmy.mediaarchiver.core.Orchestrator;
 import com.kelmy.mediaarchiver.extractors.Extractor;
+import com.kelmy.mediaarchiver.repositories.ChannelsRepository;
 
 public class Main {
     public static void main(String[] args) {
-        List<Extractor<?, ?>> extractors = List.of();
+        List<Extractor<?>> extractors = List.of();
 
         ConfigProvider configManager = new ConfigManager();
         ChannelProcessor channelProcessor = new ChannelProcessor(extractors);
-        Orchestrator orchestrator = new Orchestrator(configManager, channelProcessor);
+        ChannelsRepositoryProvider channelRepository = new ChannelsRepository();
+        Orchestrator orchestrator = new Orchestrator(configManager, channelProcessor, channelRepository);
 
         System.out.println(CYAN + "===================================" + RESET);
         System.out.println(BOLD + "    STARTING ARCHIVING ROUTINE" + RESET);

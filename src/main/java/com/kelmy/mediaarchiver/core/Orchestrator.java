@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.kelmy.mediaarchiver.config.ConfigProvider;
 import com.kelmy.mediaarchiver.config.DependencyChecker;
+import com.kelmy.mediaarchiver.database.MigrationRunner;
 import com.kelmy.mediaarchiver.schemas.AppConfig;
 import com.kelmy.mediaarchiver.schemas.BaseChannelConfig;
 import com.kelmy.mediaarchiver.utils.AnsiColors;
@@ -12,10 +13,13 @@ import com.kelmy.mediaarchiver.utils.AnsiColors;
 public final class Orchestrator {
     private final ConfigProvider configProvider;
     private final ChannelProcessor channelProcessor;
+    private final ChannelsRepositoryProvider channelProvider;
 
-    public Orchestrator(ConfigProvider configProvider, ChannelProcessor channelProcessor) {
+    public Orchestrator(ConfigProvider configProvider, ChannelProcessor channelProcessor,
+            ChannelsRepositoryProvider channelProvider) {
         this.configProvider = configProvider;
         this.channelProcessor = channelProcessor;
+        this.channelProvider = channelProvider;
     }
 
     public void run() {
@@ -23,9 +27,11 @@ public final class Orchestrator {
             return;
         }
 
+        MigrationRunner.runPendingMigrations();
+
         AppConfig configs = this.configProvider.getConfigs();
 
-        List<BaseChannelConfig> channels = this.configProvider.getChannels();
+        List<BaseChannelConfig> channels = this.channelProvider.getActiveChannels();
 
         if (channels.isEmpty()) {
             return;
@@ -53,7 +59,7 @@ public final class Orchestrator {
         }
 
         if (thereIsChanges) {
-            this.configProvider.updateLastChecked(channels);
+            this.channelProvider.updateLastChecked(channels, now);
         }
     }
 }

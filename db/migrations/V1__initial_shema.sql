@@ -39,5 +39,6 @@ CREATE TABLE IF NOT EXISTS channels (
     feed_url TEXT NOT NULL,
     folder_name TEXT NOT NULL,
     options_json TEXT,
-    lastChecked TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    active BOOLEAN DEFAULT 1,
+    last_checked TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

@@ -7,9 +7,9 @@ import com.kelmy.mediaarchiver.extractors.Extractor;
 import com.kelmy.mediaarchiver.schemas.BaseChannelConfig;
 
 public final class ChannelProcessor {
-    private final List<Extractor<?, ?>> extractors;
+    private final List<Extractor<?>> extractors;
 
-    public ChannelProcessor(List<Extractor<?, ?>> extractors) {
+    public ChannelProcessor(List<Extractor<?>> extractors) {
         this.extractors = extractors;
     }
 
