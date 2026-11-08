@@ -28,10 +28,10 @@ class YoutubeExtractor(name: String) : Extractor<YoutubeFetchOptions>(name = nam
             baseUrl = baseUrl.replace("/videos", "").replace("/shorts", "")
 
             if (options.fetchVideos) {
-                endpoints.add("${baseUrl}/videos")
+                endpoints.add("$baseUrl/videos")
             }
             if (options.fetchShorts) {
-                endpoints.add("${baseUrl}/shorts")
+                endpoints.add("$baseUrl/shorts")
             }
         }
 
