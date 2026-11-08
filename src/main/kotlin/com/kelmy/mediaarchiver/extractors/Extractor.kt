@@ -1,25 +1,16 @@
-package com.kelmy.mediaarchiver.extractors;
+package com.kelmy.mediaarchiver.extractors
 
-import java.nio.file.Path;
-import java.util.List;
+import java.nio.file.Path
 
-import com.kelmy.mediaarchiver.schemas.BaseChannelConfig;
+import com.kelmy.mediaarchiver.schemas.BaseChannelConfig
 
 /**
  * Abstract Base Class that defines the contract
  * that any platform extractor must implement.
  */
-public abstract class Extractor<TOptions> {
-    protected final String name;
-
-    protected Extractor(String name) {
-        this.name = name;
-    }
-
-    public String getName() {
-        return this.name;
-    }
-
+abstract class Extractor<TOptions>(
+    val name: String
+) {
     /**
      * Reads the platform's feed.
      *
@@ -27,12 +18,12 @@ public abstract class Extractor<TOptions> {
      * @param options    Specific search options (e.g., videos, shorts).
      * @return A list of the media items found.
      */
-    public abstract List<String> getEndpointsToScan(String targetFeed, TOptions options);
+    abstract fun getEndpointsToScan(targetFeed: String, options: TOptions): List<String>
 
     /**
      * Constructs the yt-dlp CLI arguments for the Light Scan.
      */
-    public abstract List<String> getLightScanCommand(String endpoint);
+    abstract fun getLightScanCommand(endpoint: String): List<String>
 
     /**
      * Constructs a map of typed options for yt-dlp to execute the download.
@@ -43,10 +34,15 @@ public abstract class Extractor<TOptions> {
      * @param cookiesPath An optional path to the cookies file.
      * @return A yt-dlp commands list.
      */
-    public abstract List<String> getDownloadCommand(String itemUrl, Path outputDir, Path archivePath, Path cookiesPath);
+    abstract fun getDownloadCommand(
+        itemUrl: String,
+        outputDir: Path,
+        archivePath: Path?,
+        cookiesPath: Path?
+    ): List<String>
 
     /**
      * Extracts specific options from the generic channel configuration.
      */
-    public abstract TOptions extractOptions(BaseChannelConfig channelConfig);
+    abstract fun extractOptions(channelConfig: BaseChannelConfig): TOptions
 }
