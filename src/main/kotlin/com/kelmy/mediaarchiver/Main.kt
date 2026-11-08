@@ -3,7 +3,7 @@ package com.kelmy.mediaarchiver
 import com.kelmy.mediaarchiver.config.ConfigManager
 import com.kelmy.mediaarchiver.config.ConfigProvider
 import com.kelmy.mediaarchiver.core.ChannelProcessor
-import com.kelmy.mediaarchiver.core.ChannelsRepositoryProvider
+import com.kelmy.mediaarchiver.repositories.ChannelsRepositoryProvider
 import com.kelmy.mediaarchiver.core.Orchestrator
 import com.kelmy.mediaarchiver.extractors.Extractor
 import com.kelmy.mediaarchiver.repositories.ChannelsRepository
@@ -15,9 +15,9 @@ class Main {
         fun main(args: Array<String>) {
             val extractors: List<Extractor<*>> = listOf()
 
-            val configManager: ConfigProvider = ConfigManager()
-            val channelProcessor: ChannelProcessor = ChannelProcessor(extractors)
-            val channelRepository: ChannelsRepositoryProvider = ChannelsRepository()
+            val configManager = ConfigManager()
+            val channelProcessor = ChannelProcessor(extractors)
+            val channelRepository = ChannelsRepository()
             val orchestrator = Orchestrator(configManager, channelProcessor, channelRepository)
 
             println("${AnsiColors.CYAN}==============================${AnsiColors.RESET}")

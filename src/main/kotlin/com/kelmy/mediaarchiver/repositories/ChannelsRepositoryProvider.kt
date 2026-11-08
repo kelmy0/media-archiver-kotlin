@@ -1,4 +1,4 @@
-package com.kelmy.mediaarchiver.core
+package com.kelmy.mediaarchiver.repositories
 
 import java.time.Instant
 import com.kelmy.mediaarchiver.schemas.BaseChannelConfig

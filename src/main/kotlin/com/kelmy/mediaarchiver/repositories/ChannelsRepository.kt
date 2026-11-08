@@ -6,7 +6,6 @@ import java.util.ArrayList
 
 import org.slf4j.LoggerFactory
 
-import com.kelmy.mediaarchiver.core.ChannelsRepositoryProvider
 import com.kelmy.mediaarchiver.database.ConnectionFactory
 import com.kelmy.mediaarchiver.schemas.BaseChannelConfig
 
