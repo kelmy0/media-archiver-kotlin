@@ -1,8 +1,5 @@
 package com.kelmy.mediaarchiver.schemas;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class AppConfig {
@@ -60,25 +57,6 @@ public class AppConfig {
 
         public void setCookiesPath(String cookiesPath) {
             this.cookiesPath = cookiesPath;
-        }
-
-        public Path getResolvedDownloadPath() {
-            String resolved = downloadPath;
-            if (resolved != null && resolved.contains("%USERPROFILE%")) {
-                String userProfile = System.getenv("USERPROFILE");
-
-                if (userProfile != null) {
-                    resolved = resolved.replace("%USERPROFILE%", userProfile);
-                }
-            }
-            return Paths.get(resolved);
-        }
-
-        public Path getResolvedCookiesPath() {
-            if (cookiesPath == null || cookiesPath.isBlank()) {
-                return null;
-            }
-            return Paths.get(cookiesPath);
         }
     }
 

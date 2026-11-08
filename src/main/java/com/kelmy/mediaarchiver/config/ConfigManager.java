@@ -59,7 +59,7 @@ public class ConfigManager implements ConfigProvider {
         pathConfig.setCookiesPath("");
         config.setPath(pathConfig);
 
-        config.setCooldownMinutes(60);
+        config.setCooldownMinutes(0);
 
         AppConfig.SchedulerConfig schedulerConfig = new AppConfig.SchedulerConfig();
         schedulerConfig.setEnableOnStartup(false);
