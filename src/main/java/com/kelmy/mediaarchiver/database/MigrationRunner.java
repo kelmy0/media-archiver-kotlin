@@ -40,13 +40,52 @@ public final class MigrationRunner {
                         log.info("Running migration V{}: {}", version, description);
 
                         String sqlContent = Files.readString(file);
-                        runSqlMigration(conn, sqlContent);
-                        registerMigration(conn, version, description);
+
+                        executeMigration(conn, sqlContent, version, description);
                     }
                 }
             }
         } catch (IOException | SQLException e) {
             throw new RuntimeException("Error executing migrations", e);
+        }
+    }
+
+    private static void executeMigration(Connection conn, String sqlScript, int version, String description) {
+        boolean originalAutoCommit = true;
+        try {
+            originalAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+
+            try (Statement stmt = conn.createStatement()) {
+                String[] statements = sqlScript.split(";");
+                for (String sqlStatement : statements) {
+                    String trimmed = sqlStatement.trim();
+                    if (!trimmed.isEmpty()) {
+                        stmt.execute(trimmed);
+                    }
+                }
+            }
+
+            registerMigration(conn, version, description);
+
+            conn.commit();
+            log.info("Migration V{} applied and registered successfully.", version);
+        } catch (Exception e) {
+            try {
+                conn.rollback();
+                log.error("Rollback executed successfully for failed migration V{}.", version);
+            } catch (SQLException rollbackEx) {
+                log.error("Failed to execute rollback for migration V{}: {}", version, rollbackEx.getMessage(),
+                        rollbackEx);
+            }
+
+            throw new RuntimeException("Failed to apply migration V" + version + ": " + e.getMessage(), e);
+        } finally {
+            try {
+                conn.setAutoCommit(originalAutoCommit);
+            } catch (SQLException ex) {
+                log.error("Failed to restore original auto-commit state", ex);
+            }
         }
     }
 
@@ -75,12 +114,6 @@ public final class MigrationRunner {
     private static String getMigrationDescription(String filename) {
         String noPrefix = filename.replaceFirst("^V\\d+__", "");
         return noPrefix.replace(".sql", "").replace("_", " ");
-    }
-
-    private static void runSqlMigration(Connection conn, String sqlScript) throws SQLException {
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute(sqlScript);
-        }
     }
 
     private static void createMigrationsTable() {

@@ -13,13 +13,13 @@ import com.kelmy.mediaarchiver.utils.AnsiColors;
 public final class Orchestrator {
     private final ConfigProvider configProvider;
     private final ChannelProcessor channelProcessor;
-    private final ChannelsRepositoryProvider channelProvider;
+    private final ChannelsRepositoryProvider channelRepositoryProvider;
 
     public Orchestrator(ConfigProvider configProvider, ChannelProcessor channelProcessor,
-            ChannelsRepositoryProvider channelProvider) {
+            ChannelsRepositoryProvider channelRepositoryProvider) {
         this.configProvider = configProvider;
         this.channelProcessor = channelProcessor;
-        this.channelProvider = channelProvider;
+        this.channelRepositoryProvider = channelRepositoryProvider;
     }
 
     public void run() {
@@ -31,7 +31,7 @@ public final class Orchestrator {
 
         AppConfig configs = this.configProvider.getConfigs();
 
-        List<BaseChannelConfig> channels = this.channelProvider.getActiveChannels();
+        List<BaseChannelConfig> channels = this.channelRepositoryProvider.getActiveChannels();
 
         if (channels.isEmpty()) {
             return;
@@ -59,7 +59,7 @@ public final class Orchestrator {
         }
 
         if (thereIsChanges) {
-            this.channelProvider.updateLastChecked(channels, now);
+            this.channelRepositoryProvider.updateLastChecked(channels, now);
         }
     }
 }
