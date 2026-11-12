@@ -1,11 +1,8 @@
-package com.kelmy.mediaarchiver
+package com.kelmy.mediaarchiver.bootstrap
 
 import com.kelmy.mediaarchiver.config.ConfigManager
-import com.kelmy.mediaarchiver.config.ConfigProvider
 import com.kelmy.mediaarchiver.core.ChannelProcessor
-import com.kelmy.mediaarchiver.repositories.ChannelsRepositoryProvider
 import com.kelmy.mediaarchiver.core.Orchestrator
-import com.kelmy.mediaarchiver.extractors.Extractor
 import com.kelmy.mediaarchiver.extractors.ExtractorRegistry
 import com.kelmy.mediaarchiver.repositories.ChannelsRepository
 import com.kelmy.mediaarchiver.utils.AnsiColors
