@@ -1,14 +1,14 @@
 package com.kelmy.mediaarchiver.extractors
 
+import com.kelmy.mediaarchiver.model.ChannelModel
+import com.kelmy.mediaarchiver.model.MediaItemModel
 import java.nio.file.Path
-
-import com.kelmy.mediaarchiver.schemas.BaseChannelConfig
 
 /**
  * Abstract Base Class that defines the contract
  * that any platform extractor must implement.
  */
-abstract class Extractor<TOptions>(
+abstract class Extractor(
     val name: String
 ) {
     /**
@@ -18,7 +18,7 @@ abstract class Extractor<TOptions>(
      * @param options    Specific search options (e.g., videos, shorts).
      * @return A list of the media items found.
      */
-    abstract fun getEndpointsToScan(targetFeed: String, options: TOptions): List<String>
+    abstract fun getEndpointsToScan(targetFeed: String, model: ChannelModel): List<String>
 
     /**
      * Constructs the yt-dlp CLI arguments for the Light Scan.
@@ -41,8 +41,5 @@ abstract class Extractor<TOptions>(
         cookiesPath: Path?
     ): List<String>
 
-    /**
-     * Extracts specific options from the generic channel configuration.
-     */
-    abstract fun extractOptions(channelConfig: BaseChannelConfig): TOptions
+    abstract fun parseItem(rawJson: String): MediaItemModel
 }

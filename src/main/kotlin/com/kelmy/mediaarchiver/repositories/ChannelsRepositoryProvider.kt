@@ -1,10 +1,10 @@
 package com.kelmy.mediaarchiver.repositories
 
+import com.kelmy.mediaarchiver.model.ChannelModel
 import java.time.Instant
-import com.kelmy.mediaarchiver.schemas.BaseChannelConfig
 
 interface ChannelsRepositoryProvider {
-    fun getActiveChannels(): List<BaseChannelConfig>
+    fun getActiveChannels(): List<ChannelModel>
 
-    fun updateLastChecked(channels: List<BaseChannelConfig>, timestamp: Instant)
+    fun updateLastChecked(channels: List<ChannelModel>, timestamp: Instant)
 }

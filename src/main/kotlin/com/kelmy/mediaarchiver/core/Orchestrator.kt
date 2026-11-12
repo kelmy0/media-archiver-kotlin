@@ -4,8 +4,6 @@ import com.kelmy.mediaarchiver.config.ConfigProvider
 import com.kelmy.mediaarchiver.config.DependencyChecker
 import com.kelmy.mediaarchiver.database.MigrationRunner
 import com.kelmy.mediaarchiver.repositories.ChannelsRepositoryProvider
-import com.kelmy.mediaarchiver.schemas.AppConfig
-import com.kelmy.mediaarchiver.schemas.BaseChannelConfig
 import com.kelmy.mediaarchiver.utils.AnsiColors
 import java.time.Instant
 
@@ -22,9 +20,9 @@ class Orchestrator(
 
         MigrationRunner.runPendingMigrations()
 
-        val configs: AppConfig = this.configProvider.getConfigs()
+        val configs = this.configProvider.getConfigs()
 
-        val channels: List<BaseChannelConfig> = this.channelsRepositoryProvider.getActiveChannels()
+        val channels = this.channelsRepositoryProvider.getActiveChannels()
 
         if (channels.isEmpty()) {
             return

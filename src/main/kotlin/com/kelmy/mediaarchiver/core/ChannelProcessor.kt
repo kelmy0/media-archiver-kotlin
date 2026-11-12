@@ -1,9 +1,8 @@
 package com.kelmy.mediaarchiver.core
 
 
-import com.kelmy.mediaarchiver.extractors.Extractor
 import com.kelmy.mediaarchiver.extractors.ExtractorProvider
-import com.kelmy.mediaarchiver.schemas.BaseChannelConfig
+import com.kelmy.mediaarchiver.model.ChannelModel
 import java.time.Instant
 
 class ChannelProcessor(
@@ -11,7 +10,7 @@ class ChannelProcessor(
 ) : ChannelProcessorProvider {
 
     override fun processChanel(
-        channelConfig: BaseChannelConfig, rootDownloadDir: String, cooldownMinutes: Int, now: Instant
+        channelConfig: ChannelModel, rootDownloadDir: String, cooldownMinutes: Int, now: Instant
     ): Boolean {
         // TODO Auto-generated method stub
         return false

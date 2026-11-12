@@ -7,7 +7,8 @@ import java.util.ArrayList
 import org.slf4j.LoggerFactory
 
 import com.kelmy.mediaarchiver.database.ConnectionFactory
-import com.kelmy.mediaarchiver.schemas.BaseChannelConfig
+import com.kelmy.mediaarchiver.model.ChannelModel
+import com.kelmy.mediaarchiver.schemas.ChannelSchema
 
 class ChannelsRepository : ChannelsRepositoryProvider {
     companion object {
@@ -15,28 +16,39 @@ class ChannelsRepository : ChannelsRepositoryProvider {
     }
 
 
-    override fun getActiveChannels(): List<BaseChannelConfig> {
-        val channels = ArrayList<BaseChannelConfig>()
+    override fun getActiveChannels(): List<ChannelModel> {
+        val channels = ArrayList<ChannelModel>()
         val sql =
-            "SELECT id, name, platform, feed_url, folder_name, active, last_checked, options_json FROM channels WHERE active = 1"
+            "SELECT id, name, platform, feed_url, folder_name, active, last_checked, options_json FROM channels WHERE active = 1;"
 
         try {
             ConnectionFactory.getConnection().use { conn ->
                 conn.prepareStatement(sql).use { stmt ->
                     stmt.executeQuery().use { rs ->
                         while (rs.next()) {
-                            channels.add(
-                                BaseChannelConfig(
-                                    id = rs.getInt("id"),
-                                    name = rs.getString("name"),
-                                    platform = rs.getString("platform"),
-                                    feedUrl = rs.getString("feed_url"),
-                                    folderName = rs.getString("folder_name"),
-                                    active = rs.getBoolean("active"),
-                                    lastChecked = rs.getTimestamp("last_checked")?.toInstant() ?: Instant.EPOCH,
-                                    optionsJson = rs.getString("options_json")
-                                )
+                            val schema = ChannelSchema(
+                                id = rs.getInt("id"),
+                                name = rs.getString("name"),
+                                platform = rs.getString("platform"),
+                                feedUrl = rs.getString("feed_url"),
+                                folderName = rs.getString("folder_name"),
+                                active = rs.getBoolean("active"),
+                                lastChecked = rs.getTimestamp("last_checked")?.toInstant() ?: Instant.EPOCH,
+                                optionsJson = rs.getString("options_json")
                             )
+
+                            val model = ChannelModel(
+                                id = schema.id,
+                                name = schema.name,
+                                platform = schema.platform,
+                                feedUrl = schema.feedUrl,
+                                folderName = schema.folderName,
+                                active = schema.active,
+                                lastChecked = schema.lastChecked,
+                                optionsJson = schema.optionsJson
+                            )
+
+                            channels.add(model)
                         }
                     }
 
@@ -51,12 +63,10 @@ class ChannelsRepository : ChannelsRepositoryProvider {
     }
 
 
-    override fun updateLastChecked(channels: List<BaseChannelConfig>, timestamp: Instant) {
-        if (channels.isEmpty()) {
-            return
-        }
+    override fun updateLastChecked(channels: List<ChannelModel>, timestamp: Instant) {
+        if (channels.isEmpty()) return
 
-        val sql = "UPDATE channels SET last_checked = ? WHERE id = ?"
+        val sql = "UPDATE channels SET last_checked = ? WHERE id = ?;"
 
         try {
             ConnectionFactory.getConnection().use { conn ->
@@ -85,5 +95,4 @@ class ChannelsRepository : ChannelsRepositoryProvider {
             throw RuntimeException("Error updating last_checked in batch", e)
         }
     }
-
 }

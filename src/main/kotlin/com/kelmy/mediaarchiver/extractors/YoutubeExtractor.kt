@@ -1,24 +1,31 @@
 package com.kelmy.mediaarchiver.extractors
 
+import com.kelmy.mediaarchiver.model.ChannelModel
+import com.kelmy.mediaarchiver.model.MediaItemModel
 import java.nio.file.Path
 import java.util.ArrayList
 
 import org.slf4j.LoggerFactory
 
-import com.kelmy.mediaarchiver.schemas.BaseChannelConfig
-import com.kelmy.mediaarchiver.schemas.YoutubeFetchOptions
-
 import tools.jackson.databind.DatabindException
 import tools.jackson.databind.ObjectMapper
 
-class YoutubeExtractor(name: String) : Extractor<YoutubeFetchOptions>(name = name) {
+
+internal data class YoutubeFetchOptions(
+    val fetchVideos: Boolean,
+    val fetchShorts: Boolean
+)
+
+class YoutubeExtractor(name: String) : Extractor(name = name) {
     companion object {
         private val log = LoggerFactory.getLogger(YoutubeExtractor::class.java)
         private val objectMapper = ObjectMapper()
     }
 
 
-    override fun getEndpointsToScan(targetFeed: String, options: YoutubeFetchOptions): List<String> {
+    override fun getEndpointsToScan(targetFeed: String, model: ChannelModel): List<String> {
+        val options = this.extractOptions(model)
+
         val endpoints = ArrayList<String>()
         var baseUrl = targetFeed.replace(Regex("/+$"), "")
 
@@ -94,7 +101,7 @@ class YoutubeExtractor(name: String) : Extractor<YoutubeFetchOptions>(name = nam
         return command
     }
 
-    override fun extractOptions(channelConfig: BaseChannelConfig): YoutubeFetchOptions {
+    private fun extractOptions(channelConfig: ChannelModel): YoutubeFetchOptions {
         val jsonOptions = channelConfig.optionsJson
 
         if (jsonOptions.isBlank()) {
@@ -131,5 +138,9 @@ class YoutubeExtractor(name: String) : Extractor<YoutubeFetchOptions>(name = nam
         if (!options.fetchVideos && !options.fetchShorts) {
             log.warn("Attention: Both 'fetchVideos' and 'fetchShorts' are disabled for this channel.")
         }
+    }
+
+    override fun parseItem(rawJson: String): MediaItemModel {
+        TODO("Not yet implemented")
     }
 }

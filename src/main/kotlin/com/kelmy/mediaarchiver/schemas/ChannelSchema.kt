@@ -5,7 +5,7 @@ import java.time.Instant
 /*
 * Common fields to any channel on any platform
 */
-data class BaseChannelConfig(
+data class ChannelSchema(
     val id: Int,
     val name: String,
     val platform: String,
@@ -21,6 +21,4 @@ data class BaseChannelConfig(
         require(feedUrl.isNotBlank()) { "feedUrl cant be blank" }
         require(folderName.isNotBlank()) { "folderName cant be blank" }
     }
-
-
 }
