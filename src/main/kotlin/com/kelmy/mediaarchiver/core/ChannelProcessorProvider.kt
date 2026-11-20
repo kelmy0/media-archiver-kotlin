@@ -5,6 +5,6 @@ import java.time.Instant
 
 interface ChannelProcessorProvider {
     fun processChanel(
-        channelConfig: ChannelModel, rootDownloadDir: String, cooldownMinutes: Int, now: Instant
+        channel: ChannelModel, rootDownloadDir: String, cooldownMinutes: Int, now: Instant
     ): Boolean
 }

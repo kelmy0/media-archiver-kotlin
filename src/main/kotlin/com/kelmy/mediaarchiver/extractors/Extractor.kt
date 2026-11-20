@@ -18,7 +18,7 @@ abstract class Extractor(
      * @param options    Specific search options (e.g., videos, shorts).
      * @return A list of the media items found.
      */
-    abstract fun getEndpointsToScan(targetFeed: String, model: ChannelModel): List<String>
+    abstract fun getEndpointsToScan(model: ChannelModel): List<String>
 
     /**
      * Constructs the yt-dlp CLI arguments for the Light Scan.

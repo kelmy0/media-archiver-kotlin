@@ -1,8 +1,6 @@
 package com.kelmy.mediaarchiver.core
 
 import com.kelmy.mediaarchiver.config.ConfigProvider
-import com.kelmy.mediaarchiver.config.DependencyChecker
-import com.kelmy.mediaarchiver.database.MigrationRunner
 import com.kelmy.mediaarchiver.repositories.ChannelsRepositoryProvider
 import com.kelmy.mediaarchiver.utils.AnsiColors
 import java.time.Instant
@@ -14,12 +12,6 @@ class Orchestrator(
 ) {
 
     fun run() {
-        if (!DependencyChecker.validateEnviroment()) {
-            return
-        }
-
-        MigrationRunner.runPendingMigrations()
-
         val configs = this.configProvider.getConfigs()
 
         val channels = this.channelsRepositoryProvider.getActiveChannels()

@@ -5,14 +5,12 @@ import java.sql.DriverManager
 import java.sql.SQLException
 
 object ConnectionFactory {
-    private val URL = "jdbc:sqlite:mediaarchiver.db"
+    private const val DEFAULT_URL = "jdbc:sqlite:mediaarchiver.db"
+
+    // Overridable for tests 
+    var url: String = DEFAULT_URL
 
     @JvmStatic
-    fun getConnection(): Connection {
-        return try {
-            DriverManager.getConnection(URL)
-        } catch (e: SQLException) {
-            throw RuntimeException("Error connecting to the SQLite database", e);
-        }
-    }
+    @Throws(SQLException::class)
+    fun getConnection(): Connection = DriverManager.getConnection(url)
 }

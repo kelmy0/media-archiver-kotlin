@@ -8,91 +8,144 @@ import org.slf4j.LoggerFactory
 
 import com.kelmy.mediaarchiver.database.ConnectionFactory
 import com.kelmy.mediaarchiver.model.ChannelModel
+import com.kelmy.mediaarchiver.model.NewChannel
 import com.kelmy.mediaarchiver.schemas.ChannelSchema
+import java.sql.Connection
+import java.sql.ResultSet
+import java.sql.Statement
 
 class ChannelsRepository : ChannelsRepositoryProvider {
     companion object {
         private val log = LoggerFactory.getLogger(ChannelsRepository::class.java)
+
+        private const val COLUMNS =
+            "id, name, platform, feed_url, folder_name, active, last_checked, options_json"
     }
 
 
     override fun getActiveChannels(): List<ChannelModel> {
-        val channels = ArrayList<ChannelModel>()
-        val sql =
-            "SELECT id, name, platform, feed_url, folder_name, active, last_checked, options_json FROM channels WHERE active = 1;"
+        val sql = "SELECT $COLUMNS FROM channels WHERE active = 1;"
 
-        try {
-            ConnectionFactory.getConnection().use { conn ->
-                conn.prepareStatement(sql).use { stmt ->
-                    stmt.executeQuery().use { rs ->
-                        while (rs.next()) {
-                            val schema = ChannelSchema(
-                                id = rs.getInt("id"),
-                                name = rs.getString("name"),
-                                platform = rs.getString("platform"),
-                                feedUrl = rs.getString("feed_url"),
-                                folderName = rs.getString("folder_name"),
-                                active = rs.getBoolean("active"),
-                                lastChecked = rs.getTimestamp("last_checked")?.toInstant() ?: Instant.EPOCH,
-                                optionsJson = rs.getString("options_json")
-                            )
-
-                            val model = ChannelModel(
-                                id = schema.id,
-                                name = schema.name,
-                                platform = schema.platform,
-                                feedUrl = schema.feedUrl,
-                                folderName = schema.folderName,
-                                active = schema.active,
-                                lastChecked = schema.lastChecked,
-                                optionsJson = schema.optionsJson
-                            )
-
-                            channels.add(model)
-                        }
+        return execute("Error querying active channels from database") { conn ->
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.executeQuery().use { rs ->
+                    buildList<ChannelModel> {
+                        while (rs.next()) add(mapRow(rs))
                     }
-
                 }
             }
-        } catch (e: SQLException) {
-            log.error("Error querying active channels from database", e)
-            throw RuntimeException("Error querying active channels from database", e)
         }
-
-        return channels
     }
 
+    override fun insert(channel: NewChannel): ChannelModel {
+        val sql = """
+            INSERT INTO channels (name, platform, feed_url, folder_name, active, last_checked, options_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?);
+        """.trimIndent()
+
+        val lastChecked = Instant.EPOCH
+
+        return execute("Error inserting channel '${channel.name}'") { conn ->
+            conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS).use { stmt ->
+                stmt.setString(1, channel.name)
+                stmt.setString(2, channel.platform)
+                stmt.setString(3, channel.feedUrl)
+                stmt.setString(4, channel.folderName)
+                stmt.setBoolean(5, channel.active)
+                stmt.setString(6, lastChecked.toString())
+                stmt.setString(7, channel.optionsJson)
+                stmt.executeUpdate()
+
+                val id = stmt.generatedKeys.use { keys ->
+                    check(keys.next()) { "Insert did not return a generated id" }
+                    keys.getInt(1)
+                }
+
+                ChannelModel(
+                    id = id,
+                    name = channel.name,
+                    platform = channel.platform,
+                    feedUrl = channel.feedUrl,
+                    folderName = channel.folderName,
+                    active = channel.active,
+                    lastChecked = lastChecked,
+                    optionsJson = channel.optionsJson
+                )
+            }
+        }
+    }
+
+    override fun existsByFeedUrl(feedUrl: String): Boolean {
+        val sql = "SELECT 1 FROM channels WHERE feed_url = ? LIMIT 1;"
+
+        return execute("Error checking if channel exists for '$feedUrl'") { conn ->
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, feedUrl)
+                stmt.executeQuery().use { rs -> rs.next() }
+            }
+        }
+    }
 
     override fun updateLastChecked(channels: List<ChannelModel>, timestamp: Instant) {
         if (channels.isEmpty()) return
 
         val sql = "UPDATE channels SET last_checked = ? WHERE id = ?;"
 
-        try {
-            ConnectionFactory.getConnection().use { conn ->
-                conn.autoCommit = false
+        execute("Error updating last_checked in batch") { conn ->
+            conn.autoCommit = false
 
-                try {
-                    conn.prepareStatement(sql).use { stmt ->
-                        for (channel in channels) {
-                            stmt.setString(1, timestamp.toString())
-                            stmt.setInt(2, channel.id)
-                            stmt.addBatch()
-                        }
-                        stmt.executeBatch()
+            try {
+                conn.prepareStatement(sql).use { stmt ->
+                    for (channel in channels) {
+                        stmt.setString(1, timestamp.toString())
+                        stmt.setInt(2, channel.id)
+                        stmt.addBatch()
                     }
-                    conn.commit()
-                    log.info("Selection timestamp successfully updated for {} channels in a batch.", channels.size)
-                } catch (e: SQLException) {
-                    conn.rollback()
-                    log.error("Error during execution of the update batch transaction rolled back.", e)
-                    throw e
+                    stmt.executeBatch()
                 }
-
+                conn.commit()
+                log.info("last_checked updated for {} channels in a batch.", channels.size)
+            } catch (e: SQLException) {
+                conn.rollback()
+                throw e
             }
-        } catch (e: SQLException) {
-            log.error("Error updating last_checked for channels.", e)
-            throw RuntimeException("Error updating last_checked in batch", e)
         }
+    }
+
+    /**
+     * Opens a connection, runs the action and closes it.
+     * Centralizes the SQLException handling so each method doesn't repeat it.
+     */
+    private fun <T> execute(errorMessage: String, action: (Connection) -> T): T {
+        try {
+            return ConnectionFactory.getConnection().use(action)
+        } catch (e: SQLException) {
+            log.error(errorMessage, e)
+            throw RuntimeException(errorMessage, e)
+        }
+    }
+
+    private fun mapRow(rs: ResultSet): ChannelModel {
+        val schema = ChannelSchema(
+            id = rs.getInt("id"),
+            name = rs.getString("name"),
+            platform = rs.getString("platform"),
+            feedUrl = rs.getString("feed_url"),
+            folderName = rs.getString("folder_name"),
+            active = rs.getBoolean("active"),
+            lastChecked = rs.getString("last_checked")?.let(Instant::parse) ?: Instant.EPOCH,
+            optionsJson = rs.getString("options_json")
+        )
+
+        return ChannelModel(
+            id = schema.id,
+            name = schema.name,
+            platform = schema.platform,
+            feedUrl = schema.feedUrl,
+            folderName = schema.folderName,
+            active = schema.active,
+            lastChecked = schema.lastChecked,
+            optionsJson = schema.optionsJson
+        )
     }
 }

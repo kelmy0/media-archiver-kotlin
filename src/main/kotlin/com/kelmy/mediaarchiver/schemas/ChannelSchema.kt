@@ -1,5 +1,6 @@
 package com.kelmy.mediaarchiver.schemas
 
+import com.kelmy.mediaarchiver.utils.ChannelValidator
 import java.time.Instant
 
 /*
@@ -16,9 +17,6 @@ data class ChannelSchema(
     val optionsJson: String = "{}"
 ) {
     init {
-        require(name.isNotBlank()) { "name cant be blank" }
-        require(platform.isNotBlank()) { "platform cant be blank" }
-        require(feedUrl.isNotBlank()) { "feedUrl cant be blank" }
-        require(folderName.isNotBlank()) { "folderName cant be blank" }
+        ChannelValidator.validate(name, platform, feedUrl, folderName)
     }
 }

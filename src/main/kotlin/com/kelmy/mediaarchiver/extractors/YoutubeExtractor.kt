@@ -12,8 +12,8 @@ import tools.jackson.databind.ObjectMapper
 
 
 internal data class YoutubeFetchOptions(
-    val fetchVideos: Boolean,
-    val fetchShorts: Boolean
+    val fetchVideos: Boolean = true,
+    val fetchShorts: Boolean = false
 )
 
 class YoutubeExtractor(name: String) : Extractor(name = name) {
@@ -23,11 +23,11 @@ class YoutubeExtractor(name: String) : Extractor(name = name) {
     }
 
 
-    override fun getEndpointsToScan(targetFeed: String, model: ChannelModel): List<String> {
+    override fun getEndpointsToScan(model: ChannelModel): List<String> {
         val options = this.extractOptions(model)
 
         val endpoints = ArrayList<String>()
-        var baseUrl = targetFeed.replace(Regex("/+$"), "")
+        var baseUrl = model.feedUrl.replace(Regex("/+$"), "")
 
         if (baseUrl.contains("playlist?list=") || baseUrl.contains("watch?v=")) {
             endpoints.add(baseUrl)
@@ -104,7 +104,7 @@ class YoutubeExtractor(name: String) : Extractor(name = name) {
     private fun extractOptions(channelConfig: ChannelModel): YoutubeFetchOptions {
         val jsonOptions = channelConfig.optionsJson
 
-        if (jsonOptions.isBlank()) {
+        if (jsonOptions.isBlank() || jsonOptions == "{}") {
             log.warn(
                 "No JSON option found for channel '{}'. Using default values.",
                 channelConfig.name

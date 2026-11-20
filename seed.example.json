@@ -1,0 +1,11 @@
+{
+  "channels": [
+    {
+      "name": "Canal Exemplo",
+      "platform": "youtube",
+      "feedUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=XXXX",
+      "folderName": "canal-exemplo",
+      "options": {}
+    }
+  ]
+}

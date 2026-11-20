@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS channels (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     platform TEXT NOT NULL,
-    feed_url TEXT NOT NULL,
+    feed_url TEXT NOT NULL UNIQUE,
     folder_name TEXT NOT NULL,
     options_json TEXT,
     active BOOLEAN DEFAULT 1,

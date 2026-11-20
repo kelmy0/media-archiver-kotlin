@@ -14,7 +14,7 @@ import tools.jackson.module.kotlin.jacksonObjectMapper
 
 class ConfigManager : ConfigProvider {
     companion object {
-        private val CONFIG_PATH: Path = Paths.get("config.json")
+        private val CONFIG_PATH: Path = Paths.get("config.local.json")
         private val objectMapper = jacksonObjectMapper()
         private val log = LoggerFactory.getLogger(ConfigManager::class.java)
     }
@@ -26,18 +26,18 @@ class ConfigManager : ConfigProvider {
     private fun loadOrCreateConfig(): AppConfig {
         return try {
             if (!Files.exists(CONFIG_PATH)) {
-                log.info("config.json not found. Generating a new one...")
+                log.info("config.local.json not found. Generating a new one...")
 
                 val config = AppConfig()
                 val jsonStr = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(config)
                 Files.writeString(CONFIG_PATH, jsonStr)
 
-                log.info("config.json created successfully at: {}", CONFIG_PATH.toAbsolutePath())
+                log.info("config.local.json created successfully at: {}", CONFIG_PATH.toAbsolutePath())
                 config
             } else {
                 val content = Files.readString(CONFIG_PATH)
                 val config = objectMapper.readValue(content, AppConfig::class.java)
-                log.info("config.json loaded successfully!")
+                log.info("config.local.json loaded successfully!")
                 config
             }
         } catch (e: Exception) {
