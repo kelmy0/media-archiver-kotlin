@@ -7,11 +7,14 @@ import com.kelmy.mediaarchiver.model.MediaItemModel
 import com.kelmy.mediaarchiver.repositories.DownloadHistoryRepositoryProvider
 import com.kelmy.mediaarchiver.utils.CommandRunner
 import org.slf4j.LoggerFactory
+import java.nio.file.Files
+import java.nio.file.Path
 import java.time.Instant
 
 class ChannelProcessor(
     private val extractors: ExtractorProvider,
-    private val mediaCollectorProvider: MediaCollectorProvider
+    private val mediaCollectorProvider: MediaCollectorProvider,
+    private val mediaDownloader: MediaDownloaderProvider
 ) : ChannelProcessorProvider {
     companion object {
         private val log = LoggerFactory.getLogger(ChannelProcessor::class.java)
@@ -40,7 +43,7 @@ class ChannelProcessor(
         val endpoints = extractor.getEndpointsToScan(channel)
         val newItems = LinkedHashMap<String, MediaItemModel>()
 
-        // 3. get contents
+        // 3. get contents and remove duplicated
         for (endpoint in endpoints) {
             val lightScanCommand = extractor.getLightScanCommand(endpoint)
 
@@ -62,8 +65,46 @@ class ChannelProcessor(
             }
         }
 
-        println(newItems)
+        if (newItems.isEmpty()) {
+            log.info("No new items found for channel: ${channel.name}")
+            return false
+        }
 
-        return false
+        val channelDir = Path.of(rootDownloadDir).resolve(channel.folderName)
+        Files.createDirectories(channelDir)
+        val archivePath = channelDir.resolve("archive.txt")
+
+        val itemsToDownload = newItems.values.toList()
+        val totalItems = itemsToDownload.size
+        var successCount = 0
+        for ((index, item) in itemsToDownload.withIndex()) {
+            val currentNumber = index + 1
+            val remainingAfterCurrent = totalItems - currentNumber
+
+            log.info(
+                "[Channel: ${channel.name}] Downloading [$currentNumber/$totalItems] ($remainingAfterCurrent remaining): " +
+                        "'${item.title}' (id=${item.id})"
+            )
+
+            val downloaded = mediaDownloader.downloadAndRecord(
+                item, channel.platform, extractor, channelDir, archivePath, null
+            )
+
+            if (downloaded) {
+                successCount++
+                log.info(
+                    "[Channel: ${channel.name}] Completed [$currentNumber/$totalItems] ($remainingAfterCurrent remaining): id=${item.id}"
+                )
+            } else {
+                log.warn(
+                    "[Channel: ${channel.name}] Failed [$currentNumber/$totalItems] ($remainingAfterCurrent remaining): id=${item.id}"
+                )
+            }
+        }
+
+        log.info(
+            "[Channel: ${channel.name}] Finished downloads: $successCount/$totalItems succeeded."
+        )
+        return true
     }
 }

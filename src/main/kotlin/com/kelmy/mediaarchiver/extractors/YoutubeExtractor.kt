@@ -79,14 +79,13 @@ class YoutubeExtractor(name: String) : Extractor(name = name) {
         command.add("--embed-thumbnail")
         command.add("--embed-metadata")
         command.add("--embed-subs")
-        command.add("--write-subtitles")
+        command.add("--write-subs")
 
-        command.add("--subtitles-langs")
+        command.add("--sub-langs")
         command.add("all")
 
         command.add("--paths")
         command.add("home:" + outputDir.toAbsolutePath().toString())
-
 
         if (archivePath != null) {
             command.add("--download-archive")
@@ -97,6 +96,9 @@ class YoutubeExtractor(name: String) : Extractor(name = name) {
             command.add("--cookies")
             command.add(cookiesPath.toAbsolutePath().toString())
         }
+
+        command.add("--print")
+        command.add("after_move:filepath")
 
         command.add(itemUrl)
 

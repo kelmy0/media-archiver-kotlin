@@ -5,6 +5,7 @@ import java.util.concurrent.TimeUnit
 
 data class CommandResult(
     val exitCode: Int,
+    val stdoutLines: List<String>,
     val stderr: String
 )
 
@@ -19,13 +20,15 @@ object CommandRunner {
         onStdoutLine: (String) -> Unit = {}
     ): CommandResult {
         if (command.isEmpty()) {
-            return CommandResult(exitCode = -1, stderr = "")
+            return CommandResult(exitCode = -1, stdoutLines = emptyList(), stderr = "")
         }
 
         val process = ProcessBuilder(command).start()
+        val stdoutLines = mutableListOf<String>()
 
         process.inputStream.bufferedReader(Charsets.UTF_8).useLines { lines ->
             lines.forEach { line ->
+                stdoutLines.add(line)
                 onStdoutLine(line)
             }
         }
@@ -43,6 +46,7 @@ object CommandRunner {
 
         return CommandResult(
             exitCode = process.exitValue(),
+            stdoutLines = stdoutLines,
             stderr = errorText
         )
     }

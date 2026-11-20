@@ -4,6 +4,7 @@ import com.kelmy.mediaarchiver.config.ConfigManager
 import com.kelmy.mediaarchiver.config.DependencyChecker
 import com.kelmy.mediaarchiver.core.ChannelProcessor
 import com.kelmy.mediaarchiver.core.MediaCollector
+import com.kelmy.mediaarchiver.core.MediaDownloader
 import com.kelmy.mediaarchiver.core.Orchestrator
 import com.kelmy.mediaarchiver.database.MigrationRunner
 import com.kelmy.mediaarchiver.extractors.ExtractorRegistry
@@ -37,7 +38,8 @@ class Main {
             val extractorRegistry = ExtractorRegistry.createDefault()
             val configManager = ConfigManager()
             val mediaCollector = MediaCollector(downloadHistoryRepo)
-            val channelProcessor = ChannelProcessor(extractorRegistry, mediaCollector)
+            val mediaDownloader = MediaDownloader(downloadHistoryRepo)
+            val channelProcessor = ChannelProcessor(extractorRegistry, mediaCollector, mediaDownloader)
             val orchestrator = Orchestrator(configManager, channelProcessor, channelRepository)
 
             println("${AnsiColors.CYAN}==============================${AnsiColors.RESET}")

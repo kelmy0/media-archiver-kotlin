@@ -10,6 +10,7 @@ interface DownloadHistoryRepositoryProvider {
 
     /**
      * save a video to database
+     * return true if no error occurs
      */
-    fun save(model: DownloadHistoryModel)
+    fun save(model: DownloadHistoryModel): Boolean
 }

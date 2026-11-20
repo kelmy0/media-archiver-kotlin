@@ -23,7 +23,28 @@ class DownloadHistoryRepository : DownloadHistoryRepositoryProvider {
         }
     }
 
-    override fun save(model: DownloadHistoryModel) {
-        TODO("Not yet implemented")
+    override fun save(model: DownloadHistoryModel): Boolean {
+        val sql = """
+        INSERT INTO download_history (platform, video_id, file_path, source_url, downloaded_at, archive_status)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """.trimIndent()
+
+        val rowsAffected = RepoHelpers.execute(
+            log,
+            "error saving video (${model.videoId}) to the database."
+        ) { conn ->
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, model.platform)
+                stmt.setString(2, model.videoId)
+                stmt.setString(3, model.filePath)
+                stmt.setString(4, model.sourceUrl)
+                stmt.setString(5, model.downloadedAt.toString())
+                stmt.setString(6, model.archiveStatus.value)
+
+                stmt.executeUpdate()
+            }
+        }
+
+        return rowsAffected > 0
     }
 }
