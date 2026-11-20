@@ -4,7 +4,7 @@ import com.kelmy.mediaarchiver.model.ChannelModel
 import java.time.Instant
 
 interface ChannelProcessorProvider {
-    fun processChanel(
+    fun processChannel(
         channel: ChannelModel, rootDownloadDir: String, cooldownMinutes: Int, now: Instant
     ): Boolean
 }

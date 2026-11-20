@@ -6,9 +6,11 @@ import java.nio.file.Path
 import java.util.ArrayList
 
 import org.slf4j.LoggerFactory
+import tools.jackson.core.JacksonException
 
 import tools.jackson.databind.DatabindException
-import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.JsonNode
+import tools.jackson.module.kotlin.jacksonObjectMapper
 
 
 internal data class YoutubeFetchOptions(
@@ -19,7 +21,7 @@ internal data class YoutubeFetchOptions(
 class YoutubeExtractor(name: String) : Extractor(name = name) {
     companion object {
         private val log = LoggerFactory.getLogger(YoutubeExtractor::class.java)
-        private val objectMapper = ObjectMapper()
+        private val objectMapper = jacksonObjectMapper()
     }
 
 
@@ -127,7 +129,7 @@ class YoutubeExtractor(name: String) : Extractor(name = name) {
             throw IllegalArgumentException("Invalid JSON configuration for the channel ${channelConfig.name}", e)
         } catch (e: Exception) {
             log.error(
-                "Eunexpected error while processing JSON options for the channel: {}", channelConfig.name,
+                "Unexpected error while processing JSON options for the channel: {}", channelConfig.name,
                 e
             )
             throw RuntimeException("Failed to read channel options", e)
@@ -141,6 +143,46 @@ class YoutubeExtractor(name: String) : Extractor(name = name) {
     }
 
     override fun parseItem(rawJson: String): MediaItemModel {
-        TODO("Not yet implemented")
+        val root: JsonNode = try {
+            objectMapper.readTree(rawJson)
+        } catch (e: JacksonException) {
+            throw IllegalArgumentException("Invalid JSON returned by yt-dlp: ${e.message}", e)
+        }
+
+        if (!root.isObject) {
+            throw IllegalArgumentException("Expected a JSON object, but got: ${root.nodeType}")
+        }
+
+        val entryType = root.path("_type").asString("")
+        if (entryType.equals("playlist", ignoreCase = true)) {
+            throw IllegalArgumentException("Input ignored because it is a playlist")
+        }
+
+        val id = root.path("id").asString("").trim()
+        require(id.isNotEmpty()) { "'id' field missing or empty in YouTube JSON" }
+
+        val title = root.path("title").asString("").trim()
+        require(title.isNotEmpty()) { "'title' field missing or empty for id=$id" }
+
+        val webpageUrl = root.path("webpage_url").asString("").trim()
+        val directUrl = root.path("url").asString("").trim()
+        val url = when {
+            webpageUrl.isNotEmpty() -> webpageUrl
+            directUrl.isNotEmpty() -> directUrl
+            else -> throw IllegalArgumentException("No URL ('webpage_url' or 'url') found for id=$id")
+        }
+
+        val uploadDate = root.path("upload_date").takeIf { !it.isMissingNode && !it.isNull }
+            ?.asString("")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+
+        return MediaItemModel(
+            id = id,
+            title = title,
+            url = url,
+            extractor = this.name.lowercase(),
+            uploadDate = uploadDate
+        )
     }
 }

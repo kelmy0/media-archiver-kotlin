@@ -2,15 +2,12 @@ package com.kelmy.mediaarchiver.repositories
 
 import java.sql.SQLException
 import java.time.Instant
-import java.util.ArrayList
 
 import org.slf4j.LoggerFactory
 
-import com.kelmy.mediaarchiver.database.ConnectionFactory
 import com.kelmy.mediaarchiver.model.ChannelModel
 import com.kelmy.mediaarchiver.model.NewChannel
 import com.kelmy.mediaarchiver.schemas.ChannelSchema
-import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.Statement
 
@@ -26,7 +23,7 @@ class ChannelsRepository : ChannelsRepositoryProvider {
     override fun getActiveChannels(): List<ChannelModel> {
         val sql = "SELECT $COLUMNS FROM channels WHERE active = 1;"
 
-        return execute("Error querying active channels from database") { conn ->
+        return RepoHelpers.execute(log, "Error querying active channels from database") { conn ->
             conn.prepareStatement(sql).use { stmt ->
                 stmt.executeQuery().use { rs ->
                     buildList<ChannelModel> {
@@ -45,7 +42,7 @@ class ChannelsRepository : ChannelsRepositoryProvider {
 
         val lastChecked = Instant.EPOCH
 
-        return execute("Error inserting channel '${channel.name}'") { conn ->
+        return RepoHelpers.execute(log, "Error inserting channel '${channel.name}'") { conn ->
             conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS).use { stmt ->
                 stmt.setString(1, channel.name)
                 stmt.setString(2, channel.platform)
@@ -78,7 +75,7 @@ class ChannelsRepository : ChannelsRepositoryProvider {
     override fun existsByFeedUrl(feedUrl: String): Boolean {
         val sql = "SELECT 1 FROM channels WHERE feed_url = ? LIMIT 1;"
 
-        return execute("Error checking if channel exists for '$feedUrl'") { conn ->
+        return RepoHelpers.execute(log, "Error checking if channel exists for '$feedUrl'") { conn ->
             conn.prepareStatement(sql).use { stmt ->
                 stmt.setString(1, feedUrl)
                 stmt.executeQuery().use { rs -> rs.next() }
@@ -91,7 +88,7 @@ class ChannelsRepository : ChannelsRepositoryProvider {
 
         val sql = "UPDATE channels SET last_checked = ? WHERE id = ?;"
 
-        execute("Error updating last_checked in batch") { conn ->
+        RepoHelpers.execute(log, "Error updating last_checked in batch") { conn ->
             conn.autoCommit = false
 
             try {
@@ -109,19 +106,6 @@ class ChannelsRepository : ChannelsRepositoryProvider {
                 conn.rollback()
                 throw e
             }
-        }
-    }
-
-    /**
-     * Opens a connection, runs the action and closes it.
-     * Centralizes the SQLException handling so each method doesn't repeat it.
-     */
-    private fun <T> execute(errorMessage: String, action: (Connection) -> T): T {
-        try {
-            return ConnectionFactory.getConnection().use(action)
-        } catch (e: SQLException) {
-            log.error(errorMessage, e)
-            throw RuntimeException(errorMessage, e)
         }
     }
 

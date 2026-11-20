@@ -35,7 +35,7 @@ class Orchestrator(
             println("${AnsiColors.CYAN}------------------------------------------------${AnsiColors.RESET}")
 
             val processedSuccessfully =
-                this.channelProcessorProvider.processChanel(channel, downloadPath, cooldown, now)
+                this.channelProcessorProvider.processChannel(channel, downloadPath, cooldown, now)
 
             if (processedSuccessfully) {
                 thereIsChanges = true

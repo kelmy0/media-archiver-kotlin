@@ -3,11 +3,13 @@ package com.kelmy.mediaarchiver.bootstrap
 import com.kelmy.mediaarchiver.config.ConfigManager
 import com.kelmy.mediaarchiver.config.DependencyChecker
 import com.kelmy.mediaarchiver.core.ChannelProcessor
+import com.kelmy.mediaarchiver.core.MediaCollector
 import com.kelmy.mediaarchiver.core.Orchestrator
 import com.kelmy.mediaarchiver.database.MigrationRunner
 import com.kelmy.mediaarchiver.extractors.ExtractorRegistry
 import com.kelmy.mediaarchiver.repositories.ChannelsRepository
 import com.kelmy.mediaarchiver.repositories.ChannelsRepositoryProvider
+import com.kelmy.mediaarchiver.repositories.DownloadHistoryRepository
 import com.kelmy.mediaarchiver.utils.AnsiColors
 
 class Main {
@@ -31,9 +33,11 @@ class Main {
         }
 
         private fun runArchiving(channelRepository: ChannelsRepositoryProvider) {
+            val downloadHistoryRepo = DownloadHistoryRepository()
             val extractorRegistry = ExtractorRegistry.createDefault()
             val configManager = ConfigManager()
-            val channelProcessor = ChannelProcessor(extractorRegistry)
+            val mediaCollector = MediaCollector(downloadHistoryRepo)
+            val channelProcessor = ChannelProcessor(extractorRegistry, mediaCollector)
             val orchestrator = Orchestrator(configManager, channelProcessor, channelRepository)
 
             println("${AnsiColors.CYAN}==============================${AnsiColors.RESET}")
