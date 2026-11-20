@@ -1,11 +1,18 @@
 {
   "channels": [
     {
-      "name": "Canal Exemplo",
+      "name": "Example",
       "platform": "youtube",
-      "feedUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=XXXX",
-      "folderName": "canal-exemplo",
+      "feedUrl": "https://www.youtube.com/@example",
+      "folderName": "example-channel",
       "options": {}
+    },
+    {
+      "name": "Example 2",
+      "platform": "youtube",
+      "feedUrl": "https://www.youtube.com/@example2",
+      "folderName": "example-channel-2",
+      "options": { "fetchVideos": true, "fetchShorts": true }
     }
   ]
 }
