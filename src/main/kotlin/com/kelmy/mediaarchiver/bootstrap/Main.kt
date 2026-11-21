@@ -11,7 +11,9 @@ import com.kelmy.mediaarchiver.extractors.ExtractorRegistry
 import com.kelmy.mediaarchiver.repositories.ChannelsRepository
 import com.kelmy.mediaarchiver.repositories.ChannelsRepositoryProvider
 import com.kelmy.mediaarchiver.repositories.DownloadHistoryRepository
+import com.kelmy.mediaarchiver.ui.MainWindow
 import com.kelmy.mediaarchiver.utils.AnsiColors
+import javax.swing.SwingUtilities
 
 class Main {
     companion object {
@@ -30,7 +32,14 @@ class Main {
                 return
             }
 
-            runArchiving(channelRepository)
+            if ("--cli" in args) {
+                runArchiving(channelRepository)
+                return
+            }
+
+            SwingUtilities.invokeLater {
+                MainWindow(channelRepository, onRunArchiving = { runArchiving(channelRepository) }).isVisible = true
+            }
         }
 
         private fun runArchiving(channelRepository: ChannelsRepositoryProvider) {
