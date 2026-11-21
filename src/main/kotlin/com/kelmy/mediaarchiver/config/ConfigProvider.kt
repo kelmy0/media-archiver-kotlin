@@ -1,7 +1,8 @@
 package com.kelmy.mediaarchiver.config
 
-import com.kelmy.mediaarchiver.schemas.AppConfig
+import com.kelmy.mediaarchiver.schemas.AppSettingsSchema
 
 interface ConfigProvider {
-    fun getConfigs(): AppConfig
+    fun getConfigs(): AppSettingsSchema
+    fun saveConfig(config: AppSettingsSchema)
 }

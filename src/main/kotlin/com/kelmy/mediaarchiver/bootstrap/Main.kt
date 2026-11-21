@@ -1,6 +1,7 @@
 package com.kelmy.mediaarchiver.bootstrap
 
 import com.kelmy.mediaarchiver.config.ConfigManager
+import com.kelmy.mediaarchiver.config.ConfigProvider
 import com.kelmy.mediaarchiver.config.DependencyChecker
 import com.kelmy.mediaarchiver.core.ChannelProcessor
 import com.kelmy.mediaarchiver.core.MediaCollector
@@ -32,24 +33,29 @@ class Main {
                 return
             }
 
+
+            val configManager = ConfigManager()
+
             if ("--cli" in args) {
-                runArchiving(channelRepository)
+                runArchiving(channelRepository, configManager)
                 return
             }
 
             SwingUtilities.invokeLater {
-                MainWindow(channelRepository, onRunArchiving = { runArchiving(channelRepository) }).isVisible = true
+                MainWindow(
+                    channelRepository,
+                    configManager,
+                    onRunArchiving = { runArchiving(channelRepository, configManager) }).isVisible = true
             }
         }
 
-        private fun runArchiving(channelRepository: ChannelsRepositoryProvider) {
+        private fun runArchiving(channelRepository: ChannelsRepositoryProvider, configProvider: ConfigProvider) {
             val downloadHistoryRepo = DownloadHistoryRepository()
             val extractorRegistry = ExtractorRegistry.createDefault()
-            val configManager = ConfigManager()
             val mediaCollector = MediaCollector(downloadHistoryRepo)
             val mediaDownloader = MediaDownloader(downloadHistoryRepo)
             val channelProcessor = ChannelProcessor(extractorRegistry, mediaCollector, mediaDownloader)
-            val orchestrator = Orchestrator(configManager, channelProcessor, channelRepository)
+            val orchestrator = Orchestrator(configProvider, channelProcessor, channelRepository)
 
             println("${AnsiColors.CYAN}==============================${AnsiColors.RESET}")
             println("${AnsiColors.BOLD}STARTING ARCHIVING ROUTINE${AnsiColors.RESET}")

@@ -1,16 +1,18 @@
 package com.kelmy.mediaarchiver.config
 
+import com.kelmy.mediaarchiver.model.AppSettingsModel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import com.kelmy.mediaarchiver.schemas.AppConfig
+import com.kelmy.mediaarchiver.schemas.AppSettingsSchema
 
-import tools.jackson.databind.ObjectMapper
 import tools.jackson.module.kotlin.jacksonObjectMapper
+import java.nio.charset.StandardCharsets
+import java.nio.file.StandardOpenOption
+import kotlin.concurrent.Volatile
 
 class ConfigManager : ConfigProvider {
     companion object {
@@ -19,16 +21,17 @@ class ConfigManager : ConfigProvider {
         private val log = LoggerFactory.getLogger(ConfigManager::class.java)
     }
 
-    private val cachedConfig: AppConfig = loadOrCreateConfig()
+    @Volatile
+    private var cachedConfig: AppSettingsSchema = loadOrCreateConfig()
 
-    override fun getConfigs(): AppConfig = cachedConfig
+    override fun getConfigs(): AppSettingsSchema = cachedConfig
 
-    private fun loadOrCreateConfig(): AppConfig {
+    private fun loadOrCreateConfig(): AppSettingsSchema {
         return try {
             if (!Files.exists(CONFIG_PATH)) {
                 log.info("config.local.json not found. Generating a new one...")
 
-                val config = AppConfig()
+                val config = AppSettingsSchema()
                 val jsonStr = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(config)
                 Files.writeString(CONFIG_PATH, jsonStr)
 
@@ -36,13 +39,31 @@ class ConfigManager : ConfigProvider {
                 config
             } else {
                 val content = Files.readString(CONFIG_PATH)
-                val config = objectMapper.readValue(content, AppConfig::class.java)
+                val config = objectMapper.readValue(content, AppSettingsSchema::class.java)
                 log.info("config.local.json loaded successfully!")
                 config
             }
         } catch (e: Exception) {
             log.error("Fail loading configuration: {}", e.message)
-            AppConfig()
+            AppSettingsSchema()
         }
+    }
+
+    override fun saveConfig(config: AppSettingsSchema) {
+        val validated = config.toModel()
+        val json =
+            objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(AppSettingsSchema.fromModel(validated))
+
+        CONFIG_PATH.toAbsolutePath().parent?.let { Files.createDirectories(it) }
+        Files.writeString(
+            CONFIG_PATH,
+            json,
+            StandardCharsets.UTF_8,
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING,
+            StandardOpenOption.WRITE
+        )
+        cachedConfig = loadOrCreateConfig()
+        log.info("Configuration saved to ${CONFIG_PATH.toAbsolutePath()}")
     }
 }
