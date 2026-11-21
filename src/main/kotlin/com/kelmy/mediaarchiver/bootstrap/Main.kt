@@ -1,19 +1,19 @@
 package com.kelmy.mediaarchiver.bootstrap
 
-import com.kelmy.mediaarchiver.config.ConfigManager
-import com.kelmy.mediaarchiver.config.ConfigProvider
-import com.kelmy.mediaarchiver.config.DependencyChecker
-import com.kelmy.mediaarchiver.core.ChannelProcessor
-import com.kelmy.mediaarchiver.core.MediaCollector
-import com.kelmy.mediaarchiver.core.MediaDownloader
-import com.kelmy.mediaarchiver.core.Orchestrator
-import com.kelmy.mediaarchiver.database.MigrationRunner
-import com.kelmy.mediaarchiver.extractors.ExtractorRegistry
-import com.kelmy.mediaarchiver.repositories.ChannelsRepository
-import com.kelmy.mediaarchiver.repositories.ChannelsRepositoryProvider
-import com.kelmy.mediaarchiver.repositories.DownloadHistoryRepository
-import com.kelmy.mediaarchiver.ui.MainWindow
-import com.kelmy.mediaarchiver.utils.AnsiColors
+import com.kelmy.mediaarchiver.infrastructure.config.SettingsManager
+import com.kelmy.mediaarchiver.core.domain.port.SettingsStore
+import com.kelmy.mediaarchiver.infrastructure.system.DependencyChecker
+import com.kelmy.mediaarchiver.core.application.DefaultChannelProcessor
+import com.kelmy.mediaarchiver.core.application.DefaultMediaCollector
+import com.kelmy.mediaarchiver.core.application.DefaultMediaDownloader
+import com.kelmy.mediaarchiver.core.application.Orchestrator
+import com.kelmy.mediaarchiver.infrastructure.persistence.MigrationRunner
+import com.kelmy.mediaarchiver.infrastructure.extractor.ExtractorRegistry
+import com.kelmy.mediaarchiver.infrastructure.persistence.SqlChannels
+import com.kelmy.mediaarchiver.core.domain.port.ChannelsRepository
+import com.kelmy.mediaarchiver.infrastructure.persistence.SqlDownloadHistory
+import com.kelmy.mediaarchiver.ui.gui.MainWindow
+import com.kelmy.mediaarchiver.ui.cli.AnsiColors
 import javax.swing.SwingUtilities
 
 class Main {
@@ -26,7 +26,7 @@ class Main {
 
             MigrationRunner.runPendingMigrations()
 
-            val channelRepository = ChannelsRepository()
+            val channelRepository = SqlChannels()
 
             if ("--seed" in args) {
                 DevSeeder(channelRepository).run()
@@ -34,7 +34,7 @@ class Main {
             }
 
 
-            val configManager = ConfigManager()
+            val configManager = SettingsManager()
 
             if ("--cli" in args) {
                 runArchiving(channelRepository, configManager)
@@ -49,12 +49,13 @@ class Main {
             }
         }
 
-        private fun runArchiving(channelRepository: ChannelsRepositoryProvider, configProvider: ConfigProvider) {
-            val downloadHistoryRepo = DownloadHistoryRepository()
+        @JvmStatic
+        private fun runArchiving(channelRepository: ChannelsRepository, configProvider: SettingsStore) {
+            val downloadHistoryRepo = SqlDownloadHistory()
             val extractorRegistry = ExtractorRegistry.createDefault()
-            val mediaCollector = MediaCollector(downloadHistoryRepo)
-            val mediaDownloader = MediaDownloader(downloadHistoryRepo)
-            val channelProcessor = ChannelProcessor(extractorRegistry, mediaCollector, mediaDownloader)
+            val mediaCollector = DefaultMediaCollector(downloadHistoryRepo)
+            val mediaDownloader = DefaultMediaDownloader(downloadHistoryRepo)
+            val channelProcessor = DefaultChannelProcessor(extractorRegistry, mediaCollector, mediaDownloader)
             val orchestrator = Orchestrator(configProvider, channelProcessor, channelRepository)
 
             println("${AnsiColors.CYAN}==============================${AnsiColors.RESET}")

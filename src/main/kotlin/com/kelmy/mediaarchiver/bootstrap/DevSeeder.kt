@@ -1,7 +1,7 @@
 package com.kelmy.mediaarchiver.bootstrap
 
-import com.kelmy.mediaarchiver.model.NewChannel
-import com.kelmy.mediaarchiver.repositories.ChannelsRepositoryProvider
+import com.kelmy.mediaarchiver.core.domain.model.NewChannel
+import com.kelmy.mediaarchiver.core.domain.port.ChannelsRepository
 import org.slf4j.LoggerFactory
 import tools.jackson.databind.JsonNode
 import tools.jackson.module.kotlin.jacksonObjectMapper
@@ -21,7 +21,7 @@ data class SeedChannel(
 )
 
 class DevSeeder(
-    private val channels: ChannelsRepositoryProvider
+    private val channels: ChannelsRepository
 ) {
     companion object {
         private val seedPath: Path = Paths.get("seed.local.json")
