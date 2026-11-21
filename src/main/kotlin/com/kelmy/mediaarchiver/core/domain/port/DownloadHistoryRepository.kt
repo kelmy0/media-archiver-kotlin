@@ -17,6 +17,16 @@ interface DownloadHistoryRepository {
     fun exists(platform: String, videoId: String): Boolean
 
     /**
+     * Tells which of the given items were already downloaded, using as few queries as possible.
+     * Prefer it over calling [exists] in a loop.
+     *
+     * @param platform platform identifier (e.g. `youtube`).
+     * @param videoIds identifiers to look up. May be large; implementations split it as needed.
+     * @return the subset of [videoIds] that is already in the history (empty if none, or if [videoIds] is empty).
+     */
+    fun findExistingIds(platform: String, videoIds: Collection<String>): Set<String>
+
+    /**
      * Stores a download record.
      *
      * @return `true` if the record was stored.

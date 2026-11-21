@@ -53,9 +53,6 @@ class DefaultMediaDownloader(
             cookiesPath = cookiesPath
         )
 
-        // yt-dlp (with --newline) prints a progress line for every update, which is a lot of text.
-        // The only lines we need are the ones that look like the final ".mkv" path, so we keep just
-        // those instead of asking the executor to retain the whole output.
         val printedMkvPaths: MutableList<String> = Collections.synchronizedList(mutableListOf())
 
         return try {

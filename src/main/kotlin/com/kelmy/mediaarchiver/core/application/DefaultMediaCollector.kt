@@ -1,12 +1,12 @@
 package com.kelmy.mediaarchiver.core.application
 
-import com.kelmy.mediaarchiver.core.domain.port.Extractor
 import com.kelmy.mediaarchiver.core.domain.model.MediaItem
 import com.kelmy.mediaarchiver.core.domain.port.DownloadHistoryRepository
+import com.kelmy.mediaarchiver.core.domain.port.Extractor
 import org.slf4j.LoggerFactory
 
 /**
- * Default [MediaCollector]: filters scan results using the download history.
+ * Default [MediaCollector]: parses and de-duplicates scan output, then filters it with the download history.
  *
  * @property downloadHistoryRepository history used to detect items that were already downloaded.
  */
@@ -21,7 +21,7 @@ class DefaultMediaCollector(
         rawLine: String,
         platform: String,
         extractor: Extractor,
-        targetNewItems: MutableMap<String, MediaItem>
+        targetItems: MutableMap<String, MediaItem>
     ): Boolean {
         if (rawLine.isBlank()) return false
 
@@ -32,19 +32,25 @@ class DefaultMediaCollector(
             return false
         }
 
-        // The in-memory check comes first: it is free, and it avoids a database query for items
-        // that appear in more than one endpoint of the same scan (e.g. /videos and /shorts).
-        if (targetNewItems.containsKey(item.id)) {
+        if (targetItems.containsKey(item.id)) {
             log.info("Skipping duplicate item in current scan [platform=$platform, id=${item.id}]")
             return false
         }
 
-        if (downloadHistoryRepository.exists(platform, item.id)) {
-            log.info("Skipping already downloaded item [platform=$platform, id=${item.id}]")
-            return false
+        targetItems[item.id] = item
+        return true
+    }
+
+    override fun removeAlreadyDownloaded(platform: String, items: MutableMap<String, MediaItem>): Int {
+        if (items.isEmpty()) return 0
+
+        val alreadyDownloaded = downloadHistoryRepository.findExistingIds(platform, items.keys)
+
+        for (id in alreadyDownloaded) {
+            items.remove(id)
+            log.info("Skipping already downloaded item [platform=$platform, id=$id]")
         }
 
-        targetNewItems[item.id] = item
-        return true
+        return alreadyDownloaded.size
     }
 }

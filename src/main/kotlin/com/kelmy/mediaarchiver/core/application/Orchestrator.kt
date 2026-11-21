@@ -1,15 +1,16 @@
 package com.kelmy.mediaarchiver.core.application
 
-import com.kelmy.mediaarchiver.core.domain.port.SettingsStore
+import com.kelmy.mediaarchiver.core.domain.model.Channel
 import com.kelmy.mediaarchiver.core.domain.port.ChannelsRepository
-import com.kelmy.mediaarchiver.ui.cli.AnsiColors
+import com.kelmy.mediaarchiver.core.domain.port.SettingsStore
 import java.time.Instant
 
 /**
  * Entry point of the archiving use case: runs one full archiving routine over all active channels.
  *
- * For each active channel it delegates the work to a [ChannelProcessor]; at the end, if at least
- * one channel was processed, it records the run time as `lastChecked` for the channels.
+ * For each active channel it delegates the work to a [ChannelProcessor]; at the end it records the
+ * run time as `lastChecked` **only for the channels that were actually processed**. Channels that
+ * were skipped (cooldown, unknown platform, nothing new) keep their previous `lastChecked`.
  *
  * @property settingsStore     source of the download path and of the cooldown.
  * @property channelProcessor  does the actual work for a single channel.
@@ -44,7 +45,7 @@ class Orchestrator(
         val downloadPath = settings.path.downloadPath
         val cooldown = settings.cooldownMinutes
         val now: Instant = Instant.now()
-        var thereIsChanges = false
+        val processedChannels = ArrayList<Channel>()
 
         for ((index, channel) in channels.withIndex()) {
             progressListener.onChannelStarted(index + 1, channels.size, channel)
@@ -52,12 +53,10 @@ class Orchestrator(
             val processedSuccessfully = channelProcessor.processChannel(channel, downloadPath, cooldown, now)
 
             if (processedSuccessfully) {
-                thereIsChanges = true
+                processedChannels.add(channel)
             }
         }
 
-        if (thereIsChanges) {
-            channelsRepository.updateLastChecked(channels, now)
-        }
+        channelsRepository.updateLastChecked(processedChannels, now)
     }
 }

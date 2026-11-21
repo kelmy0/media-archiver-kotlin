@@ -10,6 +10,12 @@ import org.slf4j.LoggerFactory
 class SqlDownloadHistory : DownloadHistoryRepository {
     companion object {
         private val log = LoggerFactory.getLogger(SqlDownloadHistory::class.java)
+
+        /**
+         * Maximum number of ids per query. Each id is one `?` parameter, and older SQLite builds limit a
+         * statement to 999 parameters (one is used by `platform`), so 500 is safe everywhere.
+         */
+        private const val MAX_IDS_PER_QUERY = 500
     }
 
     override fun exists(platform: String, videoId: String): Boolean {
@@ -24,6 +30,37 @@ class SqlDownloadHistory : DownloadHistoryRepository {
                 stmt.setString(2, videoId)
                 stmt.executeQuery().use { rs -> rs.next() }
             }
+        }
+    }
+
+    /**
+     * Runs a read-only `SELECT ... IN (...)` per block of [MAX_IDS_PER_QUERY] ids, all on a single
+     * connection. The query is covered by the primary key `(platform, video_id)`. Only `?` placeholders
+     * are concatenated into the SQL text; the ids themselves are always bound as parameters.
+     */
+    override fun findExistingIds(platform: String, videoIds: Collection<String>): Set<String> {
+        if (videoIds.isEmpty()) return emptySet()
+
+        return SqlExecutor.execute(
+            log,
+            "Error checking which videos were already downloaded. platform: '$platform'."
+        ) { conn ->
+            val found = HashSet<String>()
+
+            for (block in videoIds.chunked(MAX_IDS_PER_QUERY)) {
+                val placeholders = block.joinToString(",") { "?" }
+                val sql = "SELECT video_id FROM download_history WHERE platform = ? AND video_id IN ($placeholders);"
+
+                conn.prepareStatement(sql).use { stmt ->
+                    stmt.setString(1, platform)
+                    block.forEachIndexed { index, id -> stmt.setString(index + 2, id) }
+                    stmt.executeQuery().use { rs ->
+                        while (rs.next()) found.add(rs.getString(1))
+                    }
+                }
+            }
+
+            found
         }
     }
 

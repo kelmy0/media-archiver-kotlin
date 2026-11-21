@@ -1,9 +1,9 @@
 package com.kelmy.mediaarchiver.core.application
 
-import com.kelmy.mediaarchiver.core.domain.port.ExtractorRegistry
 import com.kelmy.mediaarchiver.core.domain.model.Channel
 import com.kelmy.mediaarchiver.core.domain.model.MediaItem
 import com.kelmy.mediaarchiver.core.domain.port.CommandExecutor
+import com.kelmy.mediaarchiver.core.domain.port.ExtractorRegistry
 import org.slf4j.LoggerFactory
 import java.nio.file.Files
 import java.nio.file.Path
@@ -12,8 +12,9 @@ import java.time.Instant
 /**
  * Default [ChannelProcessor].
  *
- * Flow: check cooldown -> find extractor -> scan every endpoint (collecting only new items)
- * -> create the channel folder -> download each new item sequentially.
+ * Flow: check cooldown -> find extractor -> scan every endpoint (parsing and de-duplicating items)
+ * -> drop the items already in the history (one batched query) -> create the channel folder
+ * -> download each new item sequentially.
  *
  * @property extractors      registry used to find the extractor of the channel's platform.
  * @property mediaCollector  filters the scan output down to new items.
@@ -56,7 +57,7 @@ class DefaultChannelProcessor(
         val endpoints = extractor.getEndpointsToScan(channel)
         val newItems = LinkedHashMap<String, MediaItem>()
 
-        // 3. get contents and remove duplicated
+        // 3. get contents and remove duplicated (while scanning, `newItems` holds every scanned item)
         for (endpoint in endpoints) {
             val lightScanCommand = extractor.getLightScanCommand(endpoint)
 
@@ -73,7 +74,7 @@ class DefaultChannelProcessor(
                         rawLine = line,
                         platform = channel.platform,
                         extractor = extractor,
-                        targetNewItems = newItems
+                        targetItems = newItems
                     )
                 }
 
@@ -83,6 +84,14 @@ class DefaultChannelProcessor(
             } catch (e: Exception) {
                 log.error("Failed to execute command for $endpoint: ${e.message}", e)
             }
+        }
+
+        // 4. drop what was already downloaded, with a single batched query; from here on `newItems` really is new.
+        try {
+            mediaCollector.removeAlreadyDownloaded(channel.platform, newItems)
+        } catch (e: Exception) {
+            log.error("Could not check the download history for channel '${channel.name}': ${e.message}", e)
+            return false
         }
 
         if (newItems.isEmpty()) {
