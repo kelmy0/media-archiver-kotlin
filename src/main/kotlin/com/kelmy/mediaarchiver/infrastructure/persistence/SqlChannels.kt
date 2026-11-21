@@ -79,6 +79,28 @@ class SqlChannels : ChannelsRepository {
         }
     }
 
+    override fun updateChannel(channel: Channel): Boolean {
+        val sql = """UPDATE channels
+                SET name = ?, platform = ?, feed_url = ?, folder_name = ?, 
+                active = ?, options_json = ?
+                WHERE id = ?;
+                """.trimIndent()
+
+        return SqlExecutor.execute(log, "Error updating channel: ${channel.id}, ${channel.name}") { conn ->
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, channel.name)
+                stmt.setString(2, channel.platform)
+                stmt.setString(3, channel.feedUrl)
+                stmt.setString(4, channel.folderName)
+                stmt.setBoolean(5, channel.active)
+                stmt.setString(6, channel.optionsJson)
+                stmt.setInt(7, channel.id)
+
+                stmt.executeUpdate() > 0
+            }
+        }
+    }
+
     /**
      * Updates `last_checked` for all [channels] in a single transaction (JDBC batch):
      * either every row is updated or none is.
@@ -109,14 +131,15 @@ class SqlChannels : ChannelsRepository {
         }
     }
 
-    // TODO: not implemented yet (the GUI already calls it).
     override fun deleteChannel(id: Int): Boolean {
-        TODO("Not yet implemented")
-    }
+        val sql = "DELETE FROM channels WHERE id = ?;"
 
-    // TODO: not implemented yet (the GUI already calls it).
-    override fun updateChannel(channel: Channel): Boolean {
-        TODO("Not yet implemented")
+        return SqlExecutor.execute(log, "Error deleting channel") { conn ->
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setInt(1, id)
+                stmt.executeUpdate() > 0
+            }
+        }
     }
 
     /**
