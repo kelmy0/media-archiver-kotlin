@@ -14,6 +14,7 @@ import javax.swing.JLabel
 import javax.swing.JOptionPane
 import javax.swing.JPanel
 import javax.swing.JScrollPane
+import javax.swing.JTabbedPane
 import javax.swing.JTextArea
 import javax.swing.SwingUtilities
 
@@ -32,6 +33,11 @@ class MainWindow(
         lineWrap = true
         wrapStyleWord = true
     }
+    private val channelsPanel = ChannelsPanel(
+        owner = this,
+        channelRepository = channelRepository,
+        onLog = { message -> appendLog(message) }
+    )
 
     init {
         defaultCloseOperation = EXIT_ON_CLOSE
@@ -48,19 +54,34 @@ class MainWindow(
         }
 
         val logPanel = JPanel(BorderLayout(5, 5)).apply {
-            border = BorderFactory.createEmptyBorder(0, 10, 10, 10)
-            add(JLabel("Activity Log"), BorderLayout.NORTH)
+            border = BorderFactory.createEmptyBorder(8, 10, 10, 10)
             add(JScrollPane(logArea), BorderLayout.CENTER)
+        }
+
+        val tabbedPane = JTabbedPane().apply {
+            addTab("Activity Log", logPanel)
+            addTab("Channels", channelsPanel)
+        }
+
+        val centerPanel = JPanel(BorderLayout(5, 5)).apply {
+            border = BorderFactory.createEmptyBorder(0, 10, 10, 10)
+            add(tabbedPane, BorderLayout.CENTER)
             add(statusLabel, BorderLayout.SOUTH)
         }
 
         add(topPanel, BorderLayout.NORTH)
-        add(logPanel, BorderLayout.CENTER)
+        add(centerPanel, BorderLayout.CENTER)
 
         runButton.addActionListener { startArchivingInBackground() }
         addChannelButton.addActionListener { openAddChannelDialog() }
         settingsButton.addActionListener { openSettingsDialog() }
         clearLogButton.addActionListener { clearLogs() }
+
+        tabbedPane.addChangeListener {
+            if (tabbedPane.selectedComponent === channelsPanel) {
+                channelsPanel.refreshChannels()
+            }
+        }
 
         GuiLogAppender.sink = { line -> SwingUtilities.invokeLater { appendLog(line) } }
     }
@@ -106,6 +127,7 @@ class MainWindow(
         runButton.isEnabled = enabled
         addChannelButton.isEnabled = enabled
         settingsButton.isEnabled = enabled
+        channelsPanel.setCrudEnabled(enabled)
     }
 
     private fun openSettingsDialog() {

@@ -19,6 +19,19 @@ class ChannelsRepository : ChannelsRepositoryProvider {
             "id, name, platform, feed_url, folder_name, active, last_checked, options_json"
     }
 
+    override fun getChannels(): List<ChannelModel> {
+        val sql = "SELECT $COLUMNS FROM channels"
+
+        return RepoHelpers.execute(log, "Error querying channels from database") { conn ->
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.executeQuery().use { rs ->
+                    buildList<ChannelModel> {
+                        while (rs.next()) add(mapRow(rs))
+                    }
+                }
+            }
+        }
+    }
 
     override fun getActiveChannels(): List<ChannelModel> {
         val sql = "SELECT $COLUMNS FROM channels WHERE active = 1;"
@@ -107,6 +120,14 @@ class ChannelsRepository : ChannelsRepositoryProvider {
                 throw e
             }
         }
+    }
+
+    override fun deleteChannel(id: Int): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun updateChannel(channel: ChannelModel): Boolean {
+        TODO("Not yet implemented")
     }
 
     private fun mapRow(rs: ResultSet): ChannelModel {
