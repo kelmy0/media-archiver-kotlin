@@ -4,15 +4,18 @@ import com.kelmy.mediaarchiver.core.domain.model.DownloadHistory
 import com.kelmy.mediaarchiver.core.domain.port.DownloadHistoryRepository
 import org.slf4j.LoggerFactory
 
+/**
+ * SQLite implementation of [DownloadHistoryRepository], backed by the `download_history` table.
+ */
 class SqlDownloadHistory : DownloadHistoryRepository {
     companion object {
         private val log = LoggerFactory.getLogger(SqlDownloadHistory::class.java)
     }
 
     override fun exists(platform: String, videoId: String): Boolean {
-        val sql = "SELECT platform, video_id from download_history WHERE platform = ? AND video_id = ? LIMIT 1;"
+        val sql = "SELECT 1 FROM download_history WHERE platform = ? AND video_id = ? LIMIT 1;"
 
-        return Helpers.execute(
+        return SqlExecutor.execute(
             log,
             "Error checking if video was already downloaded. platform: '$platform', videoId: '$videoId'."
         ) { conn ->
@@ -30,7 +33,7 @@ class SqlDownloadHistory : DownloadHistoryRepository {
         VALUES (?, ?, ?, ?, ?, ?)
     """.trimIndent()
 
-        val rowsAffected = Helpers.execute(
+        val rowsAffected = SqlExecutor.execute(
             log,
             "error saving video (${model.videoId}) to the database."
         ) { conn ->

@@ -17,9 +17,18 @@ import javax.swing.JOptionPane
 import javax.swing.JPanel
 import javax.swing.JTextField
 
+/**
+ * Modal dialog to view and edit the [com.kelmy.mediaarchiver.core.domain.model.AppSettings].
+ *
+ * Values are validated by the domain model itself when the settings object is built, so
+ * invalid input is reported to the user instead of being saved.
+ *
+ * @property settingsStore    source of the current values and destination of the new ones.
+ * @property onSettingsSaved  called after the settings were saved successfully.
+ */
 class SettingsDialog(
     owner: Frame,
-    private val configProvider: SettingsStore,
+    private val settingsStore: SettingsStore,
     private val onSettingsSaved: () -> Unit = {}
 ) : JDialog(owner, "Settings", true) {
     private val downloadPathField = JTextField()
@@ -38,8 +47,9 @@ class SettingsDialog(
         add(buildButtonsPanel(), BorderLayout.SOUTH)
     }
 
+    /** Fills the form with the values currently stored. */
     private fun loadCurrentValues() {
-        val current = configProvider.getConfigs()
+        val current = settingsStore.current()
         downloadPathField.text = current.path.downloadPath
         cookiesPathField.text = current.path.cookiesPath
         cooldownMinutesField.text = current.cooldownMinutes.toString()
@@ -47,6 +57,7 @@ class SettingsDialog(
         intervalMinutesField.text = current.scheduler.intervalMinutes.toString()
     }
 
+    /** Builds the label/field grid. */
     private fun buildFormPanel(): JPanel =
         JPanel(GridLayout(5, 2, 8, 8)).apply {
             border = BorderFactory.createEmptyBorder(12, 12, 6, 12)
@@ -62,6 +73,7 @@ class SettingsDialog(
             add(intervalMinutesField)
         }
 
+    /** Builds the Save/Cancel button row. */
     private fun buildButtonsPanel(): JPanel {
         val saveButton = JButton("Save").apply { addActionListener { onSave() } }
         val cancelButton = JButton("Cancel").apply { addActionListener { dispose() } }
@@ -72,6 +84,10 @@ class SettingsDialog(
         }
     }
 
+    /**
+     * Validates the form and saves it. Validation problems (not a number, negative value, blank path)
+     * are shown as a warning and keep the dialog open; any other failure is shown as an error.
+     */
     private fun onSave() {
         try {
             val cooldown = cooldownMinutesField.text.trim().toIntOrNull()
@@ -94,7 +110,7 @@ class SettingsDialog(
                 )
             )
 
-            configProvider.saveConfig(updatedConfig)
+            settingsStore.save(updatedConfig)
             onSettingsSaved()
             dispose()
         } catch (e: IllegalArgumentException) {

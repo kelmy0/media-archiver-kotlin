@@ -1,9 +1,13 @@
 package com.kelmy.mediaarchiver.ui.cli
 
-/*
- * static class used to insert colors into the terminal 
+/**
+ * ANSI escape sequences used to color and style terminal output.
+ *
+ * Usage: `println("${AnsiColors.RED}error${AnsiColors.RESET}")`. Always finish a styled text
+ * with [RESET], otherwise the style leaks into the rest of the terminal output.
  */
 object AnsiColors {
+    /** Clears every color and style. */
     const val RESET = "\u001B[0m"
 
     const val BOLD = "\u001B[1m"
@@ -22,4 +26,3 @@ object AnsiColors {
     const val BG_GREEN = "\u001B[42m"
     const val BG_YELLOW = "\u001B[43m"
 }
-

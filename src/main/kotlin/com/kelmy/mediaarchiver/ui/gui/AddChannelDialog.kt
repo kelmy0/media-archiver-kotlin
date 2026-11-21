@@ -16,6 +16,15 @@ import javax.swing.JOptionPane
 import javax.swing.JPanel
 import javax.swing.JTextField
 
+/**
+ * Modal dialog used to register a new channel.
+ *
+ * If the folder name is left empty, the channel name is used instead. Validation is done by
+ * [NewChannel] itself, and any problem is shown to the user instead of being saved.
+ *
+ * @property channelRepository where the new channel is inserted.
+ * @property onChannelAdded    called with the data that was saved, after the insertion succeeded.
+ */
 class AddChannelDialog(
     owner: Frame,
     private val channelRepository: ChannelsRepository,
@@ -36,6 +45,7 @@ class AddChannelDialog(
         add(buildButtonsPanel(), BorderLayout.SOUTH)
     }
 
+    /** Builds the label/field grid. */
     private fun buildFormPanel(): JPanel =
         JPanel(GridLayout(5, 2, 8, 8)).apply {
             border = BorderFactory.createEmptyBorder(12, 12, 6, 12)
@@ -51,6 +61,7 @@ class AddChannelDialog(
             add(activeCheck)
         }
 
+    /** Builds the Save/Cancel button row. */
     private fun buildButtonsPanel(): JPanel {
         val saveButton = JButton("Save").apply { addActionListener { onSave() } }
         val cancelButton = JButton("Cancel").apply { addActionListener { dispose() } }
@@ -61,6 +72,7 @@ class AddChannelDialog(
         }
     }
 
+    /** Builds a [NewChannel] from the form, inserts it and closes the dialog. Errors are shown and the dialog stays open. */
     private fun onSave() {
         val name = nameField.text.trim()
         val platform = platformCombo.selectedItem?.toString()?.trim().orEmpty()

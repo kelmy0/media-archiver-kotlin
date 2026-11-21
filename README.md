@@ -20,20 +20,38 @@ Many videos, animations, streams and independent content disappear from the inte
 
 ## Architecture and Organization
 
-The project follows **Clean Architecture**, **SOLID** and other JVM best practices, separating orchestration, collection/filtering, external process execution, platform-specific extractors and persistence:
+The project follows **Clean Architecture** and **SOLID**. Source code is split into layers, and
+dependencies only point **inward**: `ui` / `infrastructure` -> `core.application` -> `core.domain`.
+The domain knows nothing about databases, JSON, processes or Swing.
 
 ```text
 src/main/kotlin/com/kelmy/mediaarchiver
-├── bootstrap/     # Composition, dependency injection and entry point (Main)
-├── config/        # Loads general settings and system dependencies
-├── core/          # Orchestration (Orchestrator, ChannelProcessor, MediaCollector, MediaDownloader)
-├── database/      # Database connection and management
-├── extractors/    # Contracts and per-platform implementations (e.g., YoutubeExtractor)
-├── model/         # Domain models (ChannelModel, MediaItemModel, DownloadHistoryModel, etc.)
-├── repositories/  # Data access interfaces and implementations
-├── schemas/       # DDL scripts / table definitions
-└── utils/         # Cross-cutting utilities and command execution (CommandRunner)
+├── core/                       # The heart of the application (no framework/IO dependencies)
+│   ├── domain/
+│   │   ├── model/              # Entities and business rules (Channel, MediaItem, DownloadHistory, AppSettings)
+│   │   └── port/               # Interfaces the core needs (repositories, SettingsStore, Extractor, CommandExecutor)
+│   └── application/            # Use cases (Orchestrator, ChannelProcessor, MediaCollector, MediaDownloader)
+├── infrastructure/             # Implements the ports with real technology
+│   ├── persistence/            # SQLite: connections, migrations, SqlChannels, SqlDownloadHistory
+│   ├── config/                 # JSON settings file (JsonSettingsStore + its JSON schema)
+│   ├── extractor/              # Per-platform extractors (YoutubeExtractor) and their registry
+│   └── system/                 # External processes (ProcessCommandExecutor) and environment checks
+├── ui/
+│   ├── cli/                    # Terminal output (ANSI colors, ConsoleArchivingReporter)
+│   └── gui/                    # Swing windows and dialogs
+└── bootstrap/                  # Composition root: entry point (Main) and dependency wiring
 ```
+
+**Where does a new thing go?**
+
+| I want to...                         | Put it in                                   |
+| ------------------------------------ | ------------------------------------------- |
+| add a business rule or entity        | `core/domain/model`                         |
+| depend on something external         | declare an interface in `core/domain/port`  |
+| implement that interface             | `infrastructure/<technology>`               |
+| add a new step to the archiving flow | `core/application`                          |
+| support a new platform               | new extractor in `infrastructure/extractor` |
+| show something to the user           | `ui/cli` or `ui/gui`                        |
 
 ---
 
@@ -142,7 +160,7 @@ mvn compile exec:java
 
 - **Integration with external archiving APIs:** send/register media and metadata to services such as the **Internet Archive (`archive.org`)**, updating `archive_status` and `archive_url` in the history.
 - **Graphical user interface (GUI):** add a simple interface to make it easier to register and manage channels, view the download history and monitor executions.
-- **Support for more platforms:** expand the `extractors/` layer beyond YouTube while keeping the core unchanged.
+- **Support for more platforms:** add new extractors in `infrastructure/extractor/` without changing the `core`.
 - **Authentication / Cookies:** add support for a cookies file (`cookies.txt`) for channels or media that require authentication.
 
 ---

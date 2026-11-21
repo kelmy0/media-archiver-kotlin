@@ -3,7 +3,13 @@ package com.kelmy.mediaarchiver.infrastructure.extractor
 import com.kelmy.mediaarchiver.core.domain.port.Extractor
 import com.kelmy.mediaarchiver.core.domain.port.ExtractorRegistry
 
-class ExtractorRegistry(extractors: List<Extractor>) : ExtractorRegistry {
+/**
+ * [ExtractorRegistry] that keeps the extractors in memory, indexed by [Extractor.name].
+ *
+ * @param extractors the extractors to register.
+ * @throws IllegalArgumentException if two extractors share the same name.
+ */
+class InMemoryExtractorRegistry(extractors: List<Extractor>) : ExtractorRegistry {
     private val byPlatform: Map<String, Extractor>
 
     init {
@@ -21,7 +27,8 @@ class ExtractorRegistry(extractors: List<Extractor>) : ExtractorRegistry {
     override fun all(): List<Extractor> = byPlatform.values.toList()
 
     companion object {
-        fun createDefault(): ExtractorRegistry = ExtractorRegistry(
+        /** Creates the registry with every extractor shipped with the application (currently only YouTube). */
+        fun createDefault(): ExtractorRegistry = InMemoryExtractorRegistry(
             listOf(
                 YoutubeExtractor("youtube"),
             )

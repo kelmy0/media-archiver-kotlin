@@ -4,23 +4,39 @@ import com.kelmy.mediaarchiver.core.domain.port.Extractor
 import com.kelmy.mediaarchiver.core.domain.model.ArchiveStatus
 import com.kelmy.mediaarchiver.core.domain.model.DownloadHistory
 import com.kelmy.mediaarchiver.core.domain.model.MediaItem
+import com.kelmy.mediaarchiver.core.domain.port.CommandExecutor
 import com.kelmy.mediaarchiver.core.domain.port.DownloadHistoryRepository
-import com.kelmy.mediaarchiver.infrastructure.system.CommandRunner
 import org.slf4j.LoggerFactory
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Clock
 import java.time.Instant
+import java.util.Collections
 import kotlin.io.path.exists
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.name
 
+
+/**
+ * Default [MediaDownloader].
+ *
+ * It runs the extractor's download command, finds the resulting `.mkv` file and saves a
+ * [DownloadHistory] record. The item is only considered downloaded if the command succeeds,
+ * the file is found **and** the record is saved.
+ *
+ * @property downloadHistoryRepo history where successful downloads are recorded.
+ * @property commandExecutor     runs the download command.
+ * @property clock               time source for `downloadedAt` (injectable for tests).
+ */
 class DefaultMediaDownloader(
     private val downloadHistoryRepo: DownloadHistoryRepository,
+    private val commandExecutor: CommandExecutor,
     private val clock: Clock = Clock.systemUTC()
 ) : MediaDownloader {
     companion object {
         private val log = LoggerFactory.getLogger(DefaultMediaDownloader::class.java)
+
+        /** A download is aborted if the process prints nothing for this long. */
         private const val DOWNLOAD_IDLE_TIMEOUT_SECONDS = 300L
     }
 
@@ -37,13 +53,24 @@ class DefaultMediaDownloader(
             cookiesPath = cookiesPath
         )
 
+        // yt-dlp (with --newline) prints a progress line for every update, which is a lot of text.
+        // The only lines we need are the ones that look like the final ".mkv" path, so we keep just
+        // those instead of asking the executor to retain the whole output.
+        val printedMkvPaths: MutableList<String> = Collections.synchronizedList(mutableListOf())
+
         return try {
-            val result = CommandRunner.run(
+            val result = commandExecutor.execute(
                 command = downloadCommand,
                 timeoutSeconds = null,
                 idleTimeoutSeconds = DOWNLOAD_IDLE_TIMEOUT_SECONDS,
+                captureStdout = false,
                 onStdoutLine = { line ->
                     log.debug("[yt-dlp id=${item.id}] $line")
+
+                    val trimmed = line.trim()
+                    if (trimmed.endsWith(".mkv", ignoreCase = true)) {
+                        printedMkvPaths.add(trimmed)
+                    }
                 })
             if (result.exitCode != 0) {
                 log.warn(
@@ -53,7 +80,7 @@ class DefaultMediaDownloader(
             }
 
             val exactFilePath = resolveMkvPath(
-                stdoutLines = result.stdoutLines,
+                printedMkvPaths = synchronized(printedMkvPaths) { printedMkvPaths.toList() },
                 outputDir = outputDir,
                 videoId = item.id
             )
@@ -88,17 +115,23 @@ class DefaultMediaDownloader(
         }
     }
 
+    /**
+     * Finds the absolute path of the `.mkv` file generated for [videoId].
+     *
+     * Strategy:
+     * 1. Look at the paths printed by yt-dlp, **last first**, and take the first one that points
+     *    to an existing regular file (relative paths are resolved against [outputDir]).
+     * 2. As a fallback, scan [outputDir] for an `.mkv` whose name contains `[videoId]`.
+     *
+     * @param printedMkvPaths trimmed stdout lines that end with `.mkv`, in print order.
+     * @return the absolute path, or `null` if no file was found.
+     */
     private fun resolveMkvPath(
-        stdoutLines: List<String>,
+        printedMkvPaths: List<String>,
         outputDir: Path,
         videoId: String
     ): String? {
-        val printedCandidates = stdoutLines
-            .asReversed()
-            .map { it.trim() }
-            .filter { it.isNotEmpty() && it.endsWith(".mkv", ignoreCase = true) }
-
-        for (candidate in printedCandidates) {
+        for (candidate in printedMkvPaths.asReversed()) {
             val path = resolveCandidatePath(candidate, outputDir)
             if (path != null && path.exists() && path.isRegularFile()) {
                 return path.toAbsolutePath().toString()
@@ -125,6 +158,11 @@ class DefaultMediaDownloader(
         return null
     }
 
+    /**
+     * Converts a printed path into a [Path], resolving relative paths against [outputDir].
+     *
+     * @return the path, or `null` if [rawPath] is not a valid path for the current filesystem.
+     */
     private fun resolveCandidatePath(rawPath: String, outputDir: Path): Path? {
         return try {
             val p = Path.of(rawPath)

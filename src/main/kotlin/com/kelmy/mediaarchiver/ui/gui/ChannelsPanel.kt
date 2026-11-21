@@ -21,6 +21,16 @@ import javax.swing.ListSelectionModel
 import javax.swing.SwingUtilities
 import javax.swing.table.DefaultTableModel
 
+/**
+ * Panel with the table of registered channels and the add / edit / delete / refresh actions.
+ *
+ * Database access never happens on the Swing thread: the list is loaded on a background thread and
+ * the table is updated back on the Swing thread.
+ *
+ * @property owner             parent frame, used to position the dialogs.
+ * @property channelRepository source of the channels and target of edits and deletions.
+ * @property onLog             receives human-readable messages about what the user did.
+ */
 class ChannelsPanel(
     private val owner: Frame,
     private val channelRepository: ChannelsRepository,
@@ -61,6 +71,7 @@ class ChannelsPanel(
         refreshChannels()
     }
 
+    /** Reloads the channels from the repository (on a background thread) and refills the table. */
     fun refreshChannels() {
         Thread({
             try {
@@ -87,6 +98,7 @@ class ChannelsPanel(
         }, "Channels-Loader").start()
     }
 
+    /** Enables/disables every action button (used while an archiving routine is running). */
     fun setCrudEnabled(enabled: Boolean) {
         addButton.isEnabled = enabled
         editButton.isEnabled = enabled
@@ -94,6 +106,11 @@ class ChannelsPanel(
         refreshButton.isEnabled = enabled
     }
 
+    /**
+     * Returns the channel of the selected table row.
+     *
+     * @return the channel, or `null` (after telling the user to select one) if no row is selected.
+     */
     private fun getSelectedChannel(): Channel? {
         val row = table.selectedRow
         if (row < 0 || row >= currentChannels.size) {
@@ -108,6 +125,7 @@ class ChannelsPanel(
         return currentChannels[row]
     }
 
+    /** Opens the "Add Channel" dialog and refreshes the table when a channel is added. */
     private fun openAddDialog() {
         AddChannelDialog(owner, channelRepository) { channel ->
             onLog("Added channel: '${channel.name}' (${channel.platform})")
@@ -115,6 +133,7 @@ class ChannelsPanel(
         }.isVisible = true
     }
 
+    /** Opens the edit dialog for the selected channel and persists the confirmed changes. */
     private fun openEditDialog() {
         val selected = getSelectedChannel() ?: return
         EditChannelDialog(owner, selected) { updated ->
@@ -133,6 +152,7 @@ class ChannelsPanel(
         }.isVisible = true
     }
 
+    /** Asks for confirmation and deletes the selected channel. */
     private fun deleteSelectedChannel() {
         val selected = getSelectedChannel() ?: return
         val confirm = JOptionPane.showConfirmDialog(
@@ -159,6 +179,13 @@ class ChannelsPanel(
     }
 }
 
+/**
+ * Modal dialog to edit an existing channel. It only builds the updated [Channel] and hands it to
+ * [onConfirmUpdate]; persisting it is the caller's job. `lastChecked` and the options JSON are preserved.
+ *
+ * @property original        the channel being edited.
+ * @property onConfirmUpdate receives the updated channel after the form was validated.
+ */
 private class EditChannelDialog(
     owner: Frame,
     private val original: Channel,
@@ -207,6 +234,7 @@ private class EditChannelDialog(
         add(buttonsPanel, BorderLayout.SOUTH)
     }
 
+    /** Builds the updated [Channel] from the form. Validation errors are shown and the dialog stays open. */
     private fun onSave() {
         try {
             val name = nameField.text.trim()

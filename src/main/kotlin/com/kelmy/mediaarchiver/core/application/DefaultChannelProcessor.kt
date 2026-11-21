@@ -3,19 +3,34 @@ package com.kelmy.mediaarchiver.core.application
 import com.kelmy.mediaarchiver.core.domain.port.ExtractorRegistry
 import com.kelmy.mediaarchiver.core.domain.model.Channel
 import com.kelmy.mediaarchiver.core.domain.model.MediaItem
-import com.kelmy.mediaarchiver.infrastructure.system.CommandRunner
+import com.kelmy.mediaarchiver.core.domain.port.CommandExecutor
 import org.slf4j.LoggerFactory
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
 
+/**
+ * Default [ChannelProcessor].
+ *
+ * Flow: check cooldown -> find extractor -> scan every endpoint (collecting only new items)
+ * -> create the channel folder -> download each new item sequentially.
+ *
+ * @property extractors      registry used to find the extractor of the channel's platform.
+ * @property mediaCollector  filters the scan output down to new items.
+ * @property mediaDownloader downloads each new item.
+ * @property commandExecutor runs the light scan command.
+ */
 class DefaultChannelProcessor(
     private val extractors: ExtractorRegistry,
-    private val mediaCollectorProvider: MediaCollector,
-    private val mediaDownloader: MediaDownloader
+    private val mediaCollector: MediaCollector,
+    private val mediaDownloader: MediaDownloader,
+    private val commandExecutor: CommandExecutor
 ) : ChannelProcessor {
     companion object {
         private val log = LoggerFactory.getLogger(DefaultChannelProcessor::class.java)
+
+        /** Maximum duration of one light scan before the process is killed. */
+        private const val SCAN_TIMEOUT_SECONDS = 30L
     }
 
     override fun processChannel(
@@ -46,12 +61,15 @@ class DefaultChannelProcessor(
             val lightScanCommand = extractor.getLightScanCommand(endpoint)
 
             try {
-                val result = CommandRunner.run(
+                // Every line is consumed by the callback, so the executor must not keep them
+                // all in memory too (captureStdout = false).
+                val result = commandExecutor.execute(
                     command = lightScanCommand,
-                    timeoutSeconds = 30L,
+                    timeoutSeconds = SCAN_TIMEOUT_SECONDS,
                     idleTimeoutSeconds = null,
+                    captureStdout = false,
                 ) { line ->
-                    mediaCollectorProvider.collectFromLine(
+                    mediaCollector.collectFromLine(
                         rawLine = line,
                         platform = channel.platform,
                         extractor = extractor,

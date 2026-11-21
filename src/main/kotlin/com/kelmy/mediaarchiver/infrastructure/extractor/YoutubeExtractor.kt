@@ -14,24 +14,44 @@ import tools.jackson.databind.JsonNode
 import tools.jackson.module.kotlin.jacksonObjectMapper
 import java.nio.file.Files
 
-
+/**
+ * YouTube-specific options, read from [Channel.optionsJson].
+ *
+ * @property fetchVideos Scan the channel's `/videos` tab. Defaults to `true`.
+ * @property fetchShorts Scan the channel's `/shorts` tab. Defaults to `false`.
+ */
 internal data class YoutubeFetchOptions(
     val fetchVideos: Boolean = true,
     val fetchShorts: Boolean = false
 )
 
-class YoutubeExtractor(name: String) : Extractor(name = name) {
+/**
+ * [Extractor] for YouTube, built on top of the `yt-dlp` command line tool.
+ *
+ * @param name platform identifier this extractor answers to (normally `youtube`).
+ */
+class YoutubeExtractor(override val name: String) : Extractor {
     companion object {
         private val log = LoggerFactory.getLogger(YoutubeExtractor::class.java)
         private val objectMapper = jacksonObjectMapper()
+
+        /** Compiled once; matches the slashes at the end of a URL. */
+        private val TRAILING_SLASHES = Regex("/+$")
     }
 
-
+    /**
+     * Returns the URLs to scan:
+     * - a playlist or single-video URL is scanned as it is;
+     * - a channel URL is expanded into `/videos` and/or `/shorts`, depending on the channel options.
+     *
+     * @throws IllegalArgumentException if the channel options JSON has an invalid structure.
+     * @throws RuntimeException if the options JSON cannot be processed.
+     */
     override fun getEndpointsToScan(model: Channel): List<String> {
         val options = this.extractOptions(model)
 
         val endpoints = ArrayList<String>()
-        var baseUrl = model.feedUrl.replace(Regex("/+$"), "")
+        var baseUrl = model.feedUrl.replace(TRAILING_SLASHES, "")
 
         if (baseUrl.contains("playlist?list=") || baseUrl.contains("watch?v=")) {
             endpoints.add(baseUrl)
@@ -49,6 +69,10 @@ class YoutubeExtractor(name: String) : Extractor(name = name) {
         return endpoints
     }
 
+    /**
+     * Builds a `yt-dlp` command that prints one JSON object per item without downloading anything
+     * (`--flat-playlist --dump-json`).
+     */
     override fun getLightScanCommand(endpoint: String): List<String> {
         return listOf(
             "yt-dlp",
@@ -60,7 +84,11 @@ class YoutubeExtractor(name: String) : Extractor(name = name) {
         )
     }
 
-
+    /**
+     * Builds the `yt-dlp` command that downloads [itemUrl] as `.mkv` (best video + best audio),
+     * embedding thumbnail, metadata and all subtitles, and printing the final file path
+     * (`--print after_move:filepath`). The cookies file is only used if it exists.
+     */
     override fun getDownloadCommand(
         itemUrl: String,
         outputDir: Path,
@@ -109,6 +137,12 @@ class YoutubeExtractor(name: String) : Extractor(name = name) {
         return command
     }
 
+    /**
+     * Reads the YouTube options of [channelConfig]. A blank or empty (`{}`) JSON means "use the defaults".
+     *
+     * @throws IllegalArgumentException if the JSON does not match [YoutubeFetchOptions].
+     * @throws RuntimeException for any other failure while reading the JSON.
+     */
     private fun extractOptions(channelConfig: Channel): YoutubeFetchOptions {
         val jsonOptions = channelConfig.optionsJson
 
@@ -142,12 +176,22 @@ class YoutubeExtractor(name: String) : Extractor(name = name) {
         }
     }
 
+    /** Only logs a warning when both tabs are disabled (nothing would be scanned); it does not reject the options. */
     private fun validateOptions(options: YoutubeFetchOptions) {
         if (!options.fetchVideos && !options.fetchShorts) {
             log.warn("Attention: Both 'fetchVideos' and 'fetchShorts' are disabled for this channel.")
         }
     }
 
+    /**
+     * Converts one line of `yt-dlp --dump-json` into a [MediaItem].
+     *
+     * The URL is `webpage_url` when present, otherwise `url`. A missing or blank `upload_date`
+     * becomes `null`.
+     *
+     * @throws IllegalArgumentException if the line is not valid JSON, is not a JSON object, is a
+     *                                  playlist entry, or lacks `id`, `title` or a URL.
+     */
     override fun parseItem(rawJson: String): MediaItem {
         val root: JsonNode = try {
             objectMapper.readTree(rawJson)

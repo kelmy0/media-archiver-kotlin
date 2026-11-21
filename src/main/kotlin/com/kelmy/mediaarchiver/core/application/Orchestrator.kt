@@ -5,37 +5,51 @@ import com.kelmy.mediaarchiver.core.domain.port.ChannelsRepository
 import com.kelmy.mediaarchiver.ui.cli.AnsiColors
 import java.time.Instant
 
+/**
+ * Entry point of the archiving use case: runs one full archiving routine over all active channels.
+ *
+ * For each active channel it delegates the work to a [ChannelProcessor]; at the end, if at least
+ * one channel was processed, it records the run time as `lastChecked` for the channels.
+ *
+ * @property settingsStore     source of the download path and of the cooldown.
+ * @property channelProcessor  does the actual work for a single channel.
+ * @property channelsRepository source of the active channels and destination of `lastChecked`.
+ * @property progressListener  receives progress notifications. Defaults to no-op.
+ */
 class Orchestrator(
-    private val configProvider: SettingsStore,
-    private val channelProcessorProvider: ChannelProcessor,
-    private val channelsRepositoryProvider: ChannelsRepository
+    private val settingsStore: SettingsStore,
+    private val channelProcessor: ChannelProcessor,
+    private val channelsRepository: ChannelsRepository,
+    private val progressListener: ArchivingProgressListener = ArchivingProgressListener.NONE
 ) {
 
+    /**
+     * Runs the routine synchronously. It blocks until every channel is processed,
+     * so callers that must stay responsive (like the GUI) should call it from a background thread.
+     */
     fun run() {
-        val configs = this.configProvider.getConfigs()
+        progressListener.onRoutineStarted()
+        processActiveChannels()
+        progressListener.onRoutineFinished()
+    }
 
-        val channels = this.channelsRepositoryProvider.getActiveChannels()
+    private fun processActiveChannels() {
+        val settings = settingsStore.current()
+        val channels = channelsRepository.getActiveChannels()
 
         if (channels.isEmpty()) {
             return
         }
 
-        val downloadPath = configs.path.downloadPath
-        val cooldown = configs.cooldownMinutes
+        val downloadPath = settings.path.downloadPath
+        val cooldown = settings.cooldownMinutes
         val now: Instant = Instant.now()
         var thereIsChanges = false
 
         for ((index, channel) in channels.withIndex()) {
-            val current = index + 1
-            val name = channel.name
-            val platform = channel.platform
+            progressListener.onChannelStarted(index + 1, channels.size, channel)
 
-            println("${AnsiColors.CYAN}------------------------------------------------${AnsiColors.RESET}")
-            println("${AnsiColors.BOLD}[$current/${channels.size}]  Processing: $name (Platform: $platform)${AnsiColors.RESET}")
-            println("${AnsiColors.CYAN}------------------------------------------------${AnsiColors.RESET}")
-
-            val processedSuccessfully =
-                this.channelProcessorProvider.processChannel(channel, downloadPath, cooldown, now)
+            val processedSuccessfully = channelProcessor.processChannel(channel, downloadPath, cooldown, now)
 
             if (processedSuccessfully) {
                 thereIsChanges = true
@@ -43,7 +57,7 @@ class Orchestrator(
         }
 
         if (thereIsChanges) {
-            this.channelsRepositoryProvider.updateLastChecked(channels, now)
+            channelsRepository.updateLastChecked(channels, now)
         }
     }
 }

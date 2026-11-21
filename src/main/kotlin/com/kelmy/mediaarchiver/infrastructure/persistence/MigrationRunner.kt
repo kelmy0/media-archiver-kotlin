@@ -9,6 +9,17 @@ import java.sql.SQLException
 
 import org.slf4j.LoggerFactory
 
+/**
+ * Applies the SQL migrations found in `db/migrations` that were not applied yet.
+ *
+ * Rules:
+ * - files must be named `V<number>__<description>.sql` (e.g. `V1__create_channels.sql`);
+ * - they run in ascending version order, each one in its own transaction;
+ * - applied versions are recorded in the `schema_migrations` table, so running it again is safe.
+ *
+ * Limitation: a script is split on every `;`, so a `;` inside a string literal or a trigger body
+ * is not supported.
+ */
 object MigrationRunner {
 
     private const val MIGRATIONS_DIR = "db/migrations"
@@ -16,6 +27,13 @@ object MigrationRunner {
 
     private val VERSION_REGEX = Regex("""^V(\d+)__""")
 
+    /**
+     * Creates the control table and the migrations directory if needed, then applies every pending migration.
+     *
+     * @throws RuntimeException if a migration file is unreadable or a migration fails
+     *                          (the failed migration is rolled back).
+     * @throws IllegalArgumentException if a `.sql` file does not follow the naming pattern.
+     */
     @JvmStatic
     fun runPendingMigrations() {
         createMigrationsTable()
@@ -23,15 +41,16 @@ object MigrationRunner {
 
         try {
             ConnectionFactory.getConnection().use { conn ->
-                val migrationFiles: List<Path> = Files.list(Paths.get(MIGRATIONS_DIR)).use { paths ->
+                // The version is parsed once per file (not once per comparison while sorting).
+                val migrationFiles: List<Pair<Int, Path>> = Files.list(Paths.get(MIGRATIONS_DIR)).use { paths ->
                     paths.filter { it.toString().endsWith(".sql") }
-                        .sorted(compareBy { getMigrationVersion(it.fileName.toString()) })
+                        .map { getMigrationVersion(it.fileName.toString()) to it }
                         .toList()
+                        .sortedBy { it.first }
                 }
 
-                for (file in migrationFiles) {
+                for ((version, file) in migrationFiles) {
                     val fileName = file.fileName.toString()
-                    val version = getMigrationVersion(fileName)
                     val description = getMigrationDescription(fileName)
 
                     if (!isAlreadyImplemented(conn, version)) {
@@ -49,6 +68,10 @@ object MigrationRunner {
         }
     }
 
+    /**
+     * Runs one migration script and registers it, all inside a single transaction.
+     * On any failure the transaction is rolled back and the original auto-commit mode is restored.
+     */
     private fun executeMigration(conn: Connection, sqlScript: String, version: Int, description: String) {
         var originalAutoCommit = true
         try {
@@ -91,6 +114,7 @@ object MigrationRunner {
         }
     }
 
+    /** Creates the migrations directory when it does not exist yet. */
     private fun createMigrationsDirectory() {
         try {
             val path = Paths.get(MIGRATIONS_DIR)
@@ -102,6 +126,11 @@ object MigrationRunner {
         }
     }
 
+    /**
+     * Extracts the version number from a file name such as `V3__add_index.sql` (returns `3`).
+     *
+     * @throws IllegalArgumentException if [filename] does not follow the `V<number>__name.sql` pattern.
+     */
     private fun getMigrationVersion(filename: String): Int {
         val match = VERSION_REGEX.find(filename)
             ?: throw IllegalArgumentException(
@@ -110,6 +139,7 @@ object MigrationRunner {
         return match.groupValues[1].toInt()
     }
 
+    /** Turns `V3__add_index.sql` into a readable description (`add index`). */
     private fun getMigrationDescription(filename: String): String {
         return filename
             .replaceFirst(VERSION_REGEX, "")
@@ -117,6 +147,7 @@ object MigrationRunner {
             .replace("_", " ")
     }
 
+    /** Creates the `schema_migrations` control table if it does not exist. */
     private fun createMigrationsTable() {
         val sql = """
             CREATE TABLE IF NOT EXISTS schema_migrations(
@@ -135,6 +166,7 @@ object MigrationRunner {
         }
     }
 
+    /** Returns `true` if [version] is already registered in `schema_migrations`. */
     private fun isAlreadyImplemented(conn: Connection, version: Int): Boolean {
         val sql = "SELECT 1 FROM schema_migrations WHERE version = ?"
         conn.prepareStatement(sql).use { pstmt ->
@@ -143,6 +175,7 @@ object MigrationRunner {
         }
     }
 
+    /** Registers [version] as applied. */
     private fun registerMigration(conn: Connection, version: Int, description: String) {
         val sql = "INSERT INTO schema_migrations (version, description) VALUES (?,?)"
         conn.prepareStatement(sql).use { pstmt ->

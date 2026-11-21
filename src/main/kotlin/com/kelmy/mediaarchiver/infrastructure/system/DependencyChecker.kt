@@ -5,11 +5,20 @@ import java.util.concurrent.TimeUnit
 
 import org.slf4j.LoggerFactory
 
+/**
+ * Verifies that the external tools the application depends on are installed and on the `PATH`.
+ */
 object DependencyChecker {
     private val log = LoggerFactory.getLogger(DependencyChecker::class.java)
 
+    /**
+     * Checks the required tools: `yt-dlp`, `ffmpeg` and at least one JavaScript runtime
+     * (Node.js or Deno, needed by yt-dlp). Every problem found is logged.
+     *
+     * @return `true` if the environment meets the minimum requirements, `false` otherwise.
+     */
     @JvmStatic
-    fun validateEnviroment(): Boolean {
+    fun validateEnvironment(): Boolean {
         log.info("Validating environment dependencies...")
 
         val ytdlpOk = checkCommand(
@@ -44,6 +53,14 @@ object DependencyChecker {
         return true
     }
 
+    /**
+     * Runs `<command> <versionArgument>` and checks that it finishes with exit code 0 within 3 seconds.
+     *
+     * @param errorMessage message logged when the check fails. An empty message marks the dependency as
+     *                     one of several alternatives (e.g. Node.js or Deno), so its absence is not
+     *                     reported as an error.
+     * @return `true` if the command is available and works.
+     */
     private fun checkCommand(command: String, versionArgument: String, errorMessage: String): Boolean {
         return try {
             val process = ProcessBuilder(command, versionArgument)

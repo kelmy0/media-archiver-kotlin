@@ -16,9 +16,20 @@ import javax.swing.JTabbedPane
 import javax.swing.JTextArea
 import javax.swing.SwingUtilities
 
+/**
+ * Main window of the application: action buttons, the "Activity Log" tab and the "Channels" tab.
+ *
+ * The window never runs the archiving itself; it only calls [onRunArchiving], so it stays
+ * independent from the application layer.
+ *
+ * @property channelRepository used by the channels tab and by the "Add Channel" dialog.
+ * @property settingsStore     used by the settings dialog.
+ * @property onRunArchiving    runs one archiving routine. It is called from a background thread
+ *                             and may block for a long time.
+ */
 class MainWindow(
     private val channelRepository: ChannelsRepository,
-    private val configProvider: SettingsStore,
+    private val settingsStore: SettingsStore,
     private val onRunArchiving: () -> Unit
 ) : JFrame("Media Archiver") {
     private val runButton = JButton("Run Archiving")
@@ -84,6 +95,10 @@ class MainWindow(
         GuiLogAppender.sink = { line -> SwingUtilities.invokeLater { appendLog(line) } }
     }
 
+    /**
+     * Runs [onRunArchiving] on a dedicated thread so the window does not freeze. The controls stay
+     * disabled until it ends, and the final status is shown whether it succeeds or fails.
+     */
     private fun startArchivingInBackground() {
         setControlsEnabled(false)
         setStatus("Running archiving routine...")
@@ -115,12 +130,14 @@ class MainWindow(
         }, "MediaArchiver-Worker").start()
     }
 
+    /** Opens the modal dialog used to register a new channel. */
     private fun openAddChannelDialog() {
         AddChannelDialog(this, channelRepository) { channel ->
             appendLog("Added channel: '${channel.name}' (${channel.platform})")
         }.isVisible = true
     }
 
+    /** Enables/disables every control that must not be used while an archiving routine is running. */
     private fun setControlsEnabled(enabled: Boolean) {
         runButton.isEnabled = enabled
         addChannelButton.isEnabled = enabled
@@ -128,21 +145,25 @@ class MainWindow(
         channelsPanel.setCrudEnabled(enabled)
     }
 
+    /** Opens the modal settings dialog. */
     private fun openSettingsDialog() {
-        SettingsDialog(this, configProvider) {
+        SettingsDialog(this, settingsStore) {
             appendLog("Settings saved.")
         }.isVisible = true
     }
 
+    /** Adds a line to the activity log and scrolls to the end. Must be called from the Swing thread. */
     private fun appendLog(message: String) {
         logArea.append("$message\n")
         logArea.caretPosition = logArea.document.length
     }
 
+    /** Updates the status bar text. Must be called from the Swing thread. */
     private fun setStatus(status: String) {
         statusLabel.text = "Status: $status"
     }
 
+    /** Clears the activity log. */
     private fun clearLogs() {
         logArea.text = ""
         setStatus("Log cleared")

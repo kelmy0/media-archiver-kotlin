@@ -1,5 +1,7 @@
 package com.kelmy.mediaarchiver.infrastructure.system
 
+import com.kelmy.mediaarchiver.core.domain.port.CommandExecutor
+import com.kelmy.mediaarchiver.core.domain.port.CommandResult
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.io.InputStream
@@ -8,27 +10,28 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.thread
 
-data class CommandResult(
-    val exitCode: Int,
-    val stdoutLines: List<String>,
-    val stderr: String
-)
-
-
-object CommandRunner {
-    private val log = LoggerFactory.getLogger(CommandRunner::class.java)
+/**
+ * [CommandExecutor] that starts real operating-system processes with [ProcessBuilder].
+ *
+ * stdout and stderr are drained by two daemon threads, so a chatty process can never block on a
+ * full pipe, and the calling thread only waits for the process to finish (checking the timeouts
+ * once per second).
+ */
+class ProcessCommandExecutor : CommandExecutor {
+    private val log = LoggerFactory.getLogger(ProcessCommandExecutor::class.java)
 
     /**
-     * @param timeoutSeconds maximum total execution time (null = no limit)
-     * @param idleTimeoutSeconds maximum time without any output (stdout or stderr) (null = disabled)
+     * Starts the process and waits for it. When a timeout is exceeded, the process **and its
+     * descendants** are killed and a [RuntimeException] is thrown.
+     *
+     * An empty [command] is not an error: it returns exit code `-1` with empty output.
      */
-    @JvmStatic
-    @JvmOverloads
-    fun run(
+    override fun execute(
         command: List<String>,
-        timeoutSeconds: Long? = 120,
-        idleTimeoutSeconds: Long? = null,
-        onStdoutLine: (String) -> Unit = {}
+        timeoutSeconds: Long?,
+        idleTimeoutSeconds: Long?,
+        captureStdout: Boolean,
+        onStdoutLine: (String) -> Unit
     ): CommandResult {
         if (command.isEmpty()) {
             return CommandResult(exitCode = -1, stdoutLines = emptyList(), stderr = "")
@@ -43,7 +46,7 @@ object CommandRunner {
         val stderrLines = Collections.synchronizedList(mutableListOf<String>())
 
         val stdoutThread = startReader("cmd-stdout", process.inputStream, lastActivityNs) { line ->
-            stdoutLines.add(line)
+            if (captureStdout) stdoutLines.add(line)
             onStdoutLine(line)
         }
         val stderrThread = startReader("cmd-stderr", process.errorStream, lastActivityNs) { line ->
@@ -94,6 +97,11 @@ object CommandRunner {
         )
     }
 
+    /**
+     * Starts a daemon thread that reads [stream] line by line (UTF-8), refreshes [lastActivityNs]
+     * on each line and hands the line to [onLine]. An exception thrown by [onLine] is logged and
+     * does not stop the reading.
+     */
     private fun startReader(
         name: String,
         stream: InputStream,
@@ -116,6 +124,7 @@ object CommandRunner {
         }
     }
 
+    /** Forcibly kills [process] and its descendants, waiting up to 5 seconds for it to die. */
     private fun kill(process: Process) {
         process.descendants().forEach { it.destroyForcibly() }
         process.destroyForcibly()

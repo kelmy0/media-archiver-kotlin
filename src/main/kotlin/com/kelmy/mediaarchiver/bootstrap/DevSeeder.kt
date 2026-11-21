@@ -9,9 +9,22 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
-/** Shape of the seed file */
+/**
+ * Shape of the seed file (`seed.local.json`).
+ *
+ * @property channels the channels to be registered.
+ */
 data class SeedFile(val channels: List<SeedChannel> = emptyList())
 
+/**
+ * One channel entry of the seed file.
+ *
+ * @property name       display name of the channel.
+ * @property platform   source platform (e.g. `youtube`).
+ * @property feedUrl    URL of the channel/playlist to monitor. Used to detect duplicates.
+ * @property folderName sub-folder where the channel's files are stored.
+ * @property options    optional platform-specific options; stored as JSON text (`{}` when absent).
+ */
 data class SeedChannel(
     val name: String,
     val platform: String,
@@ -20,6 +33,14 @@ data class SeedChannel(
     val options: JsonNode? = null
 )
 
+/**
+ * Development helper that registers the channels listed in `seed.local.json`
+ * (see `seed.example.json`) in the database.
+ *
+ * It is idempotent: a channel whose `feedUrl` is already registered is skipped.
+ *
+ * @property channels repository where the channels are inserted.
+ */
 class DevSeeder(
     private val channels: ChannelsRepository
 ) {
@@ -29,6 +50,10 @@ class DevSeeder(
         private val log = LoggerFactory.getLogger(DevSeeder::class.java)
     }
 
+    /**
+     * Reads the seed file and inserts the channels that do not exist yet.
+     * If the file is missing, it only logs an error and returns.
+     */
     fun run() {
         if (!Files.exists(seedPath)) {
             log.error("Seed file not found: $seedPath (copy seed.example.json and fill it in)")

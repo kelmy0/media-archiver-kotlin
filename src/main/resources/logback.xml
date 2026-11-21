@@ -5,7 +5,7 @@
         </encoder>
     </appender>
 
-    <appender name="GUI_LOG" class="com.kelmy.mediaarchiver.ui.GuiLogAppender" />
+    <appender name="GUI_LOG" class="com.kelmy.mediaarchiver.ui.gui.GuiLogAppender" />
 
     <root level="INFO">
         <appender-ref ref="STDOUT" />

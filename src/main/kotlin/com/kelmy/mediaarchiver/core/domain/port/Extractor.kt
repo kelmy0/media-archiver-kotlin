@@ -5,41 +5,54 @@ import com.kelmy.mediaarchiver.core.domain.model.MediaItem
 import java.nio.file.Path
 
 /**
- * Abstract Base Class that defines the contract
- * that any platform extractor must implement.
+ * Contract that every platform extractor (YouTube, Bilibili...) must fulfil.
+ *
+ * An extractor knows **how** to talk to one platform: which URLs to scan, which command
+ * line to run and how to interpret the output. It does not run anything itself; running
+ * the commands is the job of a [CommandExecutor].
  */
-abstract class Extractor(
+interface Extractor {
+    /** Platform identifier (e.g. `youtube`). It is matched against [Channel.platform]. */
     val name: String
-) {
-    /**
-     * Reads the platform's feed.
-     *
-     * @param targetFeed The URL of the channel or feed.
-     * @param options    Specific search options (e.g., videos, shorts).
-     * @return A list of the media items found.
-     */
-    abstract fun getEndpointsToScan(model: Channel): List<String>
 
     /**
-     * Constructs the yt-dlp CLI arguments for the Light Scan.
+     * Lists the URLs that must be scanned for a channel, according to its options.
+     *
+     * @param model the channel being processed.
+     * @return one URL per feed to be scanned (e.g. `/videos` and `/shorts`).
      */
-    abstract fun getLightScanCommand(endpoint: String): List<String>
+    fun getEndpointsToScan(model: Channel): List<String>
 
     /**
-     * Constructs a map of typed options for yt-dlp to execute the download.
+     * Builds the command line of the lightweight scan, which only lists items
+     * (one JSON object per output line) without downloading anything.
      *
-     * @param itemUrl     The URL of the video to be downloaded.
-     * @param outputDir   The physical directory where the file will be saved.
-     * @param archivePath The path to the archive.txt file.
-     * @param cookiesPath An optional path to the cookies file.
-     * @return A yt-dlp commands list.
+     * @param endpoint a URL returned by [getEndpointsToScan].
      */
-    abstract fun getDownloadCommand(
+    fun getLightScanCommand(endpoint: String): List<String>
+
+    /**
+     * Builds the command line that downloads one item.
+     *
+     * @param itemUrl     URL of the item to be downloaded.
+     * @param outputDir   directory where the files will be saved.
+     * @param archivePath path of the `archive.txt` file, or `null` to not use one.
+     * @param cookiesPath optional path of a cookies file.
+     * @return the command and its arguments.
+     */
+    fun getDownloadCommand(
         itemUrl: String,
         outputDir: Path,
         archivePath: Path?,
         cookiesPath: Path?
     ): List<String>
 
-    abstract fun parseItem(rawJson: String): MediaItem
+    /**
+     * Converts one line of the light scan output into a [MediaItem].
+     *
+     * @param rawJson a single JSON line produced by the scan command.
+     * @throws IllegalArgumentException if the line is not a valid item (invalid JSON, a playlist,
+     *                                  or missing id/title/URL).
+     */
+    fun parseItem(rawJson: String): MediaItem
 }
