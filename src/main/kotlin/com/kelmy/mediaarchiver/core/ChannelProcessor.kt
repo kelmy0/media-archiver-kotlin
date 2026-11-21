@@ -48,7 +48,11 @@ class ChannelProcessor(
             val lightScanCommand = extractor.getLightScanCommand(endpoint)
 
             try {
-                val result = CommandRunner.run(lightScanCommand) { line ->
+                val result = CommandRunner.run(
+                    command = lightScanCommand,
+                    timeoutSeconds = 30L,
+                    idleTimeoutSeconds = null,
+                ) { line ->
                     mediaCollectorProvider.collectFromLine(
                         rawLine = line,
                         platform = channel.platform,

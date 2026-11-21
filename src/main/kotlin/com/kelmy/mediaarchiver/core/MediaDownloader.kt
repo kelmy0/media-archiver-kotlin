@@ -21,6 +21,7 @@ class MediaDownloader(
 ) : MediaDownloaderProvider {
     companion object {
         private val log = LoggerFactory.getLogger(MediaDownloader::class.java)
+        private const val DOWNLOAD_IDLE_TIMEOUT_SECONDS = 300L
     }
 
     override fun downloadAndRecord(
@@ -37,7 +38,13 @@ class MediaDownloader(
         )
 
         return try {
-            val result = CommandRunner.run(downloadCommand)
+            val result = CommandRunner.run(
+                command = downloadCommand,
+                timeoutSeconds = null,
+                idleTimeoutSeconds = DOWNLOAD_IDLE_TIMEOUT_SECONDS,
+                onStdoutLine = { line ->
+                    log.debug("[yt-dlp id=${item.id}] $line")
+                })
             if (result.exitCode != 0) {
                 log.warn(
                     "Download failed for item [platform=$platform, id=${item.id}, title='${item.title}'] with exitCode=${result.exitCode}"

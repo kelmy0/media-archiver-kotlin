@@ -74,6 +74,8 @@ class YoutubeExtractor(name: String) : Extractor(name = name) {
         command.add("--merge-output-format")
         command.add("mkv")
 
+        command.add("--newline")
+
         command.add("--write-info-json")
         command.add("--write-thumbnail")
         command.add("--embed-thumbnail")
