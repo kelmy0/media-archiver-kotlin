@@ -20,38 +20,52 @@ Many videos, animations, streams and independent content disappear from the inte
 
 ## Architecture and Organization
 
-The project follows **Clean Architecture** and **SOLID**. Source code is split into layers, and
-dependencies only point **inward**: `ui` / `infrastructure` -> `core.application` -> `core.domain`.
-The domain knows nothing about databases, JSON, processes or Swing.
+The project follows **Clean Architecture** and **SOLID**, organized in a **hybrid layout**: first by
+*context* (what the code is about), then by *layer*. Dependencies only point **inward**:
+`presentation` / `infrastructure` -> `application` -> `domain`. The domain knows nothing about
+databases, JSON, processes or Swing. The only file in the default package is `Main.kt`.
 
 ```text
-src/main/kotlin/com/kelmy/mediaarchiver
-├── core/                       # The heart of the application (no framework/IO dependencies)
-│   ├── domain/
-│   │   ├── model/              # Entities and business rules (Channel, MediaItem, DownloadHistory, AppSettings)
-│   │   └── port/               # Interfaces the core needs (repositories, SettingsStore, Extractor, CommandExecutor)
-│   └── application/            # Use cases (Orchestrator, ChannelProcessor, MediaCollector, MediaDownloader)
-├── infrastructure/             # Implements the ports with real technology
-│   ├── persistence/            # SQLite: connections, migrations, SqlChannels, SqlDownloadHistory
-│   ├── config/                 # JSON settings file (JsonSettingsStore + its JSON schema)
-│   ├── extractor/              # Per-platform extractors (YoutubeExtractor) and their registry
-│   └── system/                 # External processes (ProcessCommandExecutor) and environment checks
-├── ui/
-│   ├── cli/                    # Terminal output (ANSI colors, ConsoleArchivingReporter)
-│   └── gui/                    # Swing windows and dialogs
-└── bootstrap/                  # Composition root: entry point (Main) and dependency wiring
+src/main/kotlin
+├── Main.kt                          # Entry point (default package); delegates to bootstrap.Application
+└── com/kelmy/mediaarchiver
+    ├── library/                     # Context: channels and their videos (CRUD)
+    │   ├── domain/{model,port}      # Channel (aggregate root, holds a list of Video), Video, repositories
+    │   ├── application/             # ChannelService, VideoService
+    │   └── infrastructure/persistence/   # SqlChannels, SqlVideos
+    ├── archiving/                   # Context: scan channels and download new videos
+    │   ├── domain/{model,port}      # MediaItem, Extractor, ExtractorRegistry, CommandExecutor, folder ports
+    │   ├── application/             # Orchestrator, ChannelProcessor, MediaCollector, MediaDownloader, ArchiveFileFallback
+    │   └── infrastructure/          # extractor/ (YtDlpExtractor <- Youtube, Bilibili), system/, filesystem/, persistence/
+    ├── settings/                    # Context: application settings (JSON file)
+    ├── backup/                      # Context: save/load all data (JSON file)
+    ├── shared/infrastructure/persistence/  # SQLite plumbing: connections, migrations
+    ├── presentation/                # UiFactory (Abstract Factory), UiFactoryProvider, AppServices
+    │   ├── textual/                 # Console interface
+    │   └── gui/                     # Swing interface
+    └── bootstrap/                   # Composition root (Application) and DevSeeder
 ```
+
+**Design notes**
+
+- **Abstract Factory:** `UiFactory` creates the interface family (main view + progress listener). `TextualUiFactory`
+  and `GuiUiFactory` implement it; `UiFactoryProvider` is the static configuration that picks one (`--cli` / `--gui`).
+- **Aggregation:** a `Channel` holds a list of `Video`; a video can be moved to another channel of the same platform.
+- **Generalization/specialization:** `YtDlpExtractor` (abstract) holds everything common to `yt-dlp`;
+  `YoutubeExtractor` and `BilibiliExtractor` specialize it.
+- **Download lookup with fallback:** a video is looked up in SQLite first; for items it does not know, the channel
+  folder's `archive.txt` is read **once** (tracked in `imported_folders`) and its items are registered in the database.
 
 **Where does a new thing go?**
 
-| I want to...                         | Put it in                                   |
-| ------------------------------------ | ------------------------------------------- |
-| add a business rule or entity        | `core/domain/model`                         |
-| depend on something external         | declare an interface in `core/domain/port`  |
-| implement that interface             | `infrastructure/<technology>`               |
-| add a new step to the archiving flow | `core/application`                          |
-| support a new platform               | new extractor in `infrastructure/extractor` |
-| show something to the user           | `ui/cli` or `ui/gui`                        |
+| I want to...                         | Put it in                                                      |
+| ------------------------------------ | -------------------------------------------------------------- |
+| add a business rule or entity        | `<context>/domain/model`                                       |
+| depend on something external         | declare an interface in `<context>/domain/port`                |
+| implement that interface             | `<context>/infrastructure`                                     |
+| add a new step to a use case         | `<context>/application`                                        |
+| support a new platform               | subclass `YtDlpExtractor` in `archiving/infrastructure/extractor` and register it |
+| add a new kind of interface          | new `UiFactory` in `presentation/<name>` and a case in `UiMode` |
 
 ---
 
@@ -94,7 +108,7 @@ cd media-archiver-kotlin
 
 ### 3. Configure your channels (seed file)
 
-Until the GUI is available (see the [Roadmap](#roadmap--next-steps)), channels are registered through a seed file. At the repository root there is a template called `seed.example.json`:
+Channels can be added from either interface; for bulk registration there is also a seed file. At the repository root there is a template called `seed.example.json`:
 
 ```json
 {
@@ -149,7 +163,8 @@ mvn compile exec:java -Dexec.args="--seed"
 After seeding, compile and run normally from the repository root:
 
 ```bash
-mvn compile exec:java
+mvn compile exec:java                          # graphical interface (default)
+mvn compile exec:java -Dexec.args="--cli"        # console interface
 ```
 
 > The seed step only needs to be repeated when you add new channels to `seed.local.json`. Duplicates are ignored automatically.

@@ -1,7 +1,7 @@
 package com.kelmy.mediaarchiver.bootstrap
 
-import com.kelmy.mediaarchiver.core.domain.model.NewChannel
-import com.kelmy.mediaarchiver.core.domain.port.ChannelsRepository
+import com.kelmy.mediaarchiver.library.domain.model.NewChannel
+import com.kelmy.mediaarchiver.library.domain.port.ChannelsRepository
 import org.slf4j.LoggerFactory
 import tools.jackson.databind.JsonNode
 import tools.jackson.module.kotlin.jacksonObjectMapper
@@ -14,7 +14,7 @@ import java.nio.file.Paths
  *
  * @property channels the channels to be registered.
  */
-data class SeedFile(val channels: List<SeedChannel> = emptyList())
+internal data class SeedFile(val channels: List<SeedChannel> = emptyList())
 
 /**
  * One channel entry of the seed file.
@@ -25,7 +25,7 @@ data class SeedFile(val channels: List<SeedChannel> = emptyList())
  * @property folderName sub-folder where the channel's files are stored.
  * @property options    optional platform-specific options; stored as JSON text (`{}` when absent).
  */
-data class SeedChannel(
+internal data class SeedChannel(
     val name: String,
     val platform: String,
     val feedUrl: String,
@@ -41,7 +41,7 @@ data class SeedChannel(
  *
  * @property channels repository where the channels are inserted.
  */
-class DevSeeder(
+internal class DevSeeder(
     private val channels: ChannelsRepository
 ) {
     companion object {

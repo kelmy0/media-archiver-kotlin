@@ -12,7 +12,7 @@
         <maven.compiler.release>26</maven.compiler.release>
         <kotlin.version>2.4.21</kotlin.version>
         <jackson.version>3.2.4</jackson.version>
-        <main.class>com.kelmy.mediaarchiver.bootstrap.Main</main.class>
+        <main.class>MainKt</main.class>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
     </properties>
