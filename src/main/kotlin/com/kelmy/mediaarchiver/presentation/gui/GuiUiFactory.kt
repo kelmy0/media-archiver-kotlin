@@ -34,7 +34,7 @@ internal class GuiApplicationView(private val services: AppServices) : Applicati
  */
 internal class GuiArchivingProgressListener : ArchivingProgressListener {
     private companion object {
-        val log = LoggerFactory.getLogger(GuiArchivingProgressListener::class.java)
+        private val log = LoggerFactory.getLogger(GuiArchivingProgressListener::class.java)
     }
 
     override fun onRoutineStarted() = log.info("=== Archiving routine started ===")

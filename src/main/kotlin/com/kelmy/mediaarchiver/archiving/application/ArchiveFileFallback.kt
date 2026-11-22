@@ -37,7 +37,7 @@ internal class ArchiveFileFallback(
     private val clock: Clock = Clock.systemUTC()
 ) {
     private companion object {
-        val log = LoggerFactory.getLogger(ArchiveFileFallback::class.java)
+        private val log = LoggerFactory.getLogger(ArchiveFileFallback::class.java)
     }
 
     /**

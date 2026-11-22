@@ -11,7 +11,7 @@ import java.nio.file.Path
  */
 internal class FileSystemChannelFolderReader : ChannelFolderReader {
     private companion object {
-        val log = LoggerFactory.getLogger(FileSystemChannelFolderReader::class.java)
+        private val log = LoggerFactory.getLogger(FileSystemChannelFolderReader::class.java)
 
         /** Name of the file written by `yt-dlp --download-archive`. */
         const val ARCHIVE_FILE_NAME = "archive.txt"
@@ -40,7 +40,10 @@ internal class FileSystemChannelFolderReader : ChannelFolderReader {
             Files.list(channelDir).use { stream ->
                 stream
                     .filter { Files.isRegularFile(it) }
-                    .filter { it.fileName.toString().let { name -> name.endsWith(".mkv", ignoreCase = true) && name.contains("[$videoId]") } }
+                    .filter {
+                        it.fileName.toString()
+                            .let { name -> name.endsWith(".mkv", ignoreCase = true) && name.contains("[$videoId]") }
+                    }
                     .findFirst()
                     .map { it.toAbsolutePath().toString() }
                     .orElse(null)

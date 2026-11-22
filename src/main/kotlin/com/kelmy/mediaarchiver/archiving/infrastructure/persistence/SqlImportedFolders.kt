@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
  */
 internal class SqlImportedFolders : ImportedFoldersRepository {
     private companion object {
-        val log = LoggerFactory.getLogger(SqlImportedFolders::class.java)
+        private val log = LoggerFactory.getLogger(SqlImportedFolders::class.java)
     }
 
     override fun isImported(folderName: String): Boolean {

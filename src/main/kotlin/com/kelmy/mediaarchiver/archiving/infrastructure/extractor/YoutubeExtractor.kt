@@ -27,7 +27,7 @@ internal data class YoutubeFetchOptions(
  */
 internal class YoutubeExtractor(name: String) : YtDlpExtractor(name) {
     private companion object {
-        val log = LoggerFactory.getLogger(YoutubeExtractor::class.java)
+        private val log = LoggerFactory.getLogger(YoutubeExtractor::class.java)
         val objectMapper = jacksonObjectMapper()
 
         /** Compiled once; matches the slashes at the end of a URL. */
