@@ -39,7 +39,7 @@ internal object Application {
      * Pending database migrations are always applied before anything else runs.
      *
      * @param args command-line arguments: `--seed` imports `seed.local.json` and exits; `--cli` or `--gui`
-     *             choose the interface (see [UiFactoryProvider]).
+     *             choose the interface.
      */
     fun run(args: Array<String>) {
         if (!DependencyChecker.validateEnvironment()) {
@@ -55,7 +55,7 @@ internal object Application {
             return
         }
 
-        // The abstract factory decides which interface family is created; nothing below depends on it.
+        // The abstract factory decides which interface family is created.
         val uiFactory = UiFactoryProvider.create(UiFactoryProvider.modeFrom(args))
         val settingsStore = JsonSettingsStore()
         val videosRepository = SqlVideos()

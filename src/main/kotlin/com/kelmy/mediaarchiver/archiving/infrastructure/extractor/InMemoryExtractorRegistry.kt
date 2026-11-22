@@ -27,7 +27,7 @@ internal class InMemoryExtractorRegistry(extractors: List<Extractor>) : Extracto
     override fun all(): List<Extractor> = byPlatform.values.toList()
 
     companion object {
-        /** Creates the registry with every extractor shipped with the application (YouTube and Bilibili). */
+        /** Creates the registry with every extractor shipped with the application. */
         fun createDefault(): ExtractorRegistry = InMemoryExtractorRegistry(
             listOf(
                 YoutubeExtractor("youtube"),

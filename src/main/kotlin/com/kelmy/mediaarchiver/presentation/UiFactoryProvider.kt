@@ -10,8 +10,7 @@ enum class UiMode { TEXTUAL, GUI }
  * Static class that holds the **static configuration** of the abstract factory: which [UiMode] is used
  * and which concrete [UiFactory] belongs to each mode.
  *
- * The mode is [DEFAULT_MODE] unless the command line says otherwise (`--cli` or `--gui`), so the
- * program can run with either interface without touching `Main` or any other code.
+ * The mode is [DEFAULT_MODE] unless the command line says otherwise (`--cli` or `--gui`).
  */
 object UiFactoryProvider {
     /** Interface used when no argument chooses one. Change this single line to change the default. */
