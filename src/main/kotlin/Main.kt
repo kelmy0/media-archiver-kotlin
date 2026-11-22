@@ -8,4 +8,9 @@ import com.kelmy.mediaarchiver.bootstrap.Application
  *
  * Arguments: `--seed` (import `seed.local.json` and exit), `--cli` (console menu), `--gui` (Swing window, the default).
  */
-fun main(args: Array<String>) = Application.run(args)
+object Main {
+    @JvmStatic
+    fun main(args: Array<String>) {
+        Application.run(args)
+    }
+}
